@@ -25,3 +25,52 @@ Cada vez que hagas cambios en el proyecto y quieras que esos cambios aparezcan e
 
 ```bash
 npm run deploy
+
+--------------------------------------------------------------------------------
+## Cómo trabajar en tu rama
+
+Abre la terminal dentro del proyecto. Cambia `mi-rama` por el nombre que quieras usar, por ejemplo: `trabajo-juan`.
+
+### 1. Crear tu rama
+
+```bash
+git switch main          # Entrar a main
+git pull origin main     # Descargar lo último del proyecto
+git switch -c mi-rama     # Crear tu rama y entrar en ella
+```
+
+Ahora haz tu trabajo y guarda tus archivos.
+
+### 2. Subir tu trabajo por primera vez
+
+```bash
+git status                       # Ver los archivos que cambiaste
+git add .                        # Preparar tus cambios para guardarlos
+git commit -m "Agregué el login"  # Guardar tus cambios con una descripción
+git push -u origin mi-rama        # Subir tu rama a GitHub
+```
+
+Cambia `"Agregué el login"` por una descripción de lo que hiciste.
+
+**Para que tu trabajo pase a `main`:**
+
+1. Abre el repositorio en GitHub.
+2. Entra a **Pull requests** → **New pull request**.
+3. En **base**, elige `main`. En **compare**, elige tu rama.
+4. Escribe qué hiciste y pulsa **Create pull request**.
+5. Avisa al encargado para que revise y junte tu trabajo con `main` usando **Merge**.
+
+### 3. Si ya subiste tu rama y quieres subir más cambios
+
+Sigue trabajando en esa misma rama. Guarda tus archivos y ejecuta:
+
+```bash
+git status                          # Ver los archivos que cambiaste
+git add .                           # Preparar tus nuevos cambios
+git commit -m "Corregí el login"     # Guardarlos con una nueva descripción
+git push                            # Subirlos a la misma rama en GitHub
+```
+
+Si el encargado **todavía no juntó tu trabajo con `main`**, verá los nuevos cambios en la misma solicitud. No necesitas crear otra.
+
+Si **ya juntó tu trabajo con `main`**, vuelve al paso 1 y crea una rama con otro nombre para tu siguiente tarea.
