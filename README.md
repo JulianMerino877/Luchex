@@ -38,6 +38,7 @@ Abre la terminal dentro del proyecto. Cambia `mi-rama` por el nombre que quieras
 git switch main          # Entrar a main
 git pull origin main     # Descargar lo último del proyecto
 git switch -c mi-rama     # Crear tu rama y entrar en ella
+git branch               # Saber en que rama estas realmente
 ```
 
 Ahora haz tu trabajo y guarda tus archivos.
