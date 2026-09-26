@@ -54,7 +54,7 @@ git switch main          # Entrar a main
 git pull origin main     # Descargar lo último del proyecto
 git switch -c mi-rama     # Crear tu rama y entrar en ella
 git branch               # Saber en que rama estas realmente
-
+git checkout NOMBRE-DE-LA-RAMA  # Entra a tu rama
 
 ```
 
