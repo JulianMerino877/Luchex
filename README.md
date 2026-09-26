@@ -27,10 +27,25 @@ Cada vez que hagas cambios en el proyecto y quieras que esos cambios aparezcan e
 npm run deploy  # ejecuta este en tu terminal
 ```
 
+### Como clonar este repositorio
+```bash
+git clone https://github.com/JulianMerino877/Luchex.git     # clonar repositorio
+```
 
-## Cómo trabajar en tu rama
-
-Abre la terminal dentro del proyecto. Cambia `mi-rama` por el nombre que quieras usar, por ejemplo: `trabajo-juan`.
+## Se marroglaste la rama o lo jodiste como a tu ex Como ELIMINAR
+### si aun no subiste al github o aun no enviaste a main usa este
+```bash
+git switch main                    # Primero sales de la rama a rama principal(main)
+git branch -D feature/inventario   # eliminas en la parte de feature/inventario  escribe tu rama y eliminas
+git branch                         # fijate se si eliminno tu rama
+```
+### si ya subis al github o ya mandaste al main anteriormente
+### y marroglaste la segunda parte de tu trabajo en la misma rama que enviaste
+```bash
+git restore .  # esto elimina cambios recientes 
+git status     # ver estado del proyecto si eliminaste los recientes no debe aparecer rojos
+        
+```
 
 ### 1. Crear tu rama
 
@@ -39,6 +54,8 @@ git switch main          # Entrar a main
 git pull origin main     # Descargar lo último del proyecto
 git switch -c mi-rama     # Crear tu rama y entrar en ella
 git branch               # Saber en que rama estas realmente
+
+
 ```
 
 Ahora haz tu trabajo y guarda tus archivos.
