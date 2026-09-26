@@ -1,0 +1,54 @@
+<main class="login-page">
+  <section class="login-card" aria-label="Acceso a Luchex" [attr.aria-busy]="submitting() || auth.loading()">
+    <img class="logo" src="assets/images/logo1.png" alt="Luchex, mecánica de motos" width="180" height="170" />
+
+    @if (auth.loading()) {
+      <p class="session-message" role="status">Cargando sesión…</p>
+    } @else if (auth.user()) {
+      <p class="session-message" role="status">Abriendo el sistema…</p>
+    } @else {
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input id="email" type="email" formControlName="email" placeholder="admin@gmail.com"
+            autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"
+            [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
+            [attr.aria-describedby]="form.controls.email.touched && form.controls.email.invalid ? 'email-error' : null" />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <p id="email-error" class="field-error">Introduce un correo electrónico válido.</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <div class="password-field">
+            <input id="password" [type]="showPassword() ? 'text' : 'password'" formControlName="password"
+              placeholder="Mínimo 6 caracteres" autocomplete="current-password"
+              [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid"
+              [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'password-error' : null" />
+            <button class="visibility-button" type="button" (click)="showPassword.set(!showPassword())"
+              [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [attr.aria-pressed]="showPassword()" aria-controls="password">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+                @if (showPassword()) { <path d="m3 3 18 18" /> }
+              </svg>
+            </button>
+          </div>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <p id="password-error" class="field-error">Introduce una contraseña de al menos 6 caracteres.</p>
+          }
+        </div>
+
+        <button class="submit-button" type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Ingresando…' : 'Ingresar al sistema' }}
+        </button>
+      </form>
+    }
+
+    @if (error()) {
+      <p class="error-message" role="alert">{{ error() }}</p>
+    }
+  </section>
+</main>
