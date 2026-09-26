@@ -23,9 +23,9 @@ Puedes ingresar con esta cuenta:
 
 Cada vez que hagas cambios en el proyecto y quieras que esos cambios aparezcan en la página web publicada, abre la terminal dentro del proyecto y ejecuta:
 
-
+```bash
 npm run deploy  # ejecuta este en tu terminal
-
+```
 
 
 ## Cómo trabajar en tu rama
