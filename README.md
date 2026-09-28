@@ -37,6 +37,7 @@ git clone https://github.com/JulianMerino877/Luchex.git     # clonar repositorio
 ```bash
 git switch main                    # Primero sales de la rama a rama principal(main)
 git branch -D feature/inventario   # eliminas en la parte de feature/inventario  escribe tu rama y eliminas
+ git clean -fd                     # elimina archivos que creaste como .html .css etc.. pero sin comit hehchos
 git branch                         # fijate se si eliminno tu rama
 ```
 ### si ya subis al github o ya mandaste al main anteriormente
