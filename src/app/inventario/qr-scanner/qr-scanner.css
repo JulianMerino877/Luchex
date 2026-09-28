@@ -1,0 +1,28 @@
+:host { display: block; }
+.camera { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 16px; background: #171513; color: #fff4e7; }
+video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.capture-flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: #fff; opacity: 0; }
+.capture-flash.visible { animation: capture-flash 200ms ease-out both; }
+@keyframes capture-flash { 0% { opacity: 0; } 35% { opacity: .88; } 100% { opacity: 0; } }
+.viewfinder { position: absolute; top: 47%; left: 50%; width: 68%; max-width: 360px; max-height: 72%; aspect-ratio: 1; overflow: hidden; transform: translate(-50%, -50%); border: 1px solid rgb(255 192 132 / 72%); border-radius: 18px; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 38%), inset 0 0 24px rgb(241 140 82 / 12%); background: linear-gradient(#ffab70, #ffab70) left top / 30px 4px no-repeat, linear-gradient(#ffab70, #ffab70) left top / 4px 30px no-repeat, linear-gradient(#ffab70, #ffab70) right top / 30px 4px no-repeat, linear-gradient(#ffab70, #ffab70) right top / 4px 30px no-repeat, linear-gradient(#ffab70, #ffab70) left bottom / 30px 4px no-repeat, linear-gradient(#ffab70, #ffab70) left bottom / 4px 30px no-repeat, linear-gradient(#ffab70, #ffab70) right bottom / 30px 4px no-repeat, linear-gradient(#ffab70, #ffab70) right bottom / 4px 30px no-repeat; transition: border-color 120ms, box-shadow 120ms; }
+.viewfinder.analyzing { border-color: #ffd1ad; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 38%), 0 0 20px rgb(255 137 65 / 55%), inset 0 0 26px rgb(241 140 82 / 18%); }
+.detected-line { position: absolute; z-index: 2; top: 7%; left: 6%; right: 6%; height: 3px; border-radius: 999px; background: linear-gradient(90deg, transparent, #fff 18%, #ff7b32 50%, #fff 82%, transparent); box-shadow: 0 0 8px #ff7b32, 0 0 18px rgb(255 123 50 / 78%); animation: detected-scan 650ms ease-in-out infinite alternate; }
+@keyframes detected-scan { to { top: 92%; } }
+.camera-status { position: absolute; bottom: 14px; left: 12px; right: 12px; text-align: center; font-size: 13px; text-shadow: 0 1px 4px #000; }
+.reading-warning { padding: 8px; border-radius: 8px; background: rgb(117 38 18 / 92%); }
+.camera-controls { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.zoom-control { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 9px; background: rgb(18 15 13 / 78%); font-size: 12px; }
+.zoom-control input { width: min(130px, 28vw); accent-color: #f18c52; }
+.torch { min-height: 36px; padding: 7px 11px; border-color: #d99a72; background: rgb(18 15 13 / 78%); font-size: 12px; }
+.torch.active { background: #b9502c; border-color: #f6b58e; }
+.failed { aspect-ratio: auto; min-height: 240px; }
+.failed video { display: none; }
+.camera-error { display: grid; justify-items: center; padding: 28px 20px; text-align: center; }
+svg { width: 38px; height: 38px; color: #e98954; }
+p { max-width: 360px; font-size: 14px; line-height: 1.5; }
+button { border: 1px solid #9b6242; border-radius: 9px; background: #39291f; color: #ffe3ca; padding: 10px 16px; font: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid #f3a771; outline-offset: 3px; }
+@media (max-width: 420px) {
+  .zoom-control input { width: 90px; }
+  .torch { padding-inline: 8px; }
+}

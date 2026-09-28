@@ -1,0 +1,29 @@
+<div class="camera" [class.failed]="estado() === 'error'">
+  <video #video autoplay muted playsinline aria-label="Vista de la cámara para escanear el código QR"></video>
+  <span class="capture-flash" [class.visible]="flashCaptura()" aria-hidden="true"></span>
+  @if (estado() !== 'error') {
+    <div class="viewfinder" [class.analyzing]="analizando() || !!faseLectura()" aria-hidden="true">
+      @if (faseLectura() === 'analizando') { <span class="detected-line"></span> }
+    </div>
+    <span class="camera-status" [class.reading-warning]="avisoLectura()" role="status">{{ avisoLectura() || (faseLectura() === 'detectado' ? 'QR detectado' : faseLectura() === 'analizando' ? 'Analizando código...' : estado() === 'iniciando' ? 'Iniciando cámara HD…' : 'Coloca el QR completo dentro del cuadro') }}</span>
+    @if (estado() === 'escaneando' && !faseLectura() && (zoomDisponible() || linternaDisponible())) {
+      <div class="camera-controls">
+        @if (zoomDisponible()) {
+          <label class="zoom-control">
+            <span>Zoom</span>
+            <input #zoomControl type="range" [min]="zoomMinimo()" [max]="zoomMaximo()" [step]="zoomPaso()" [value]="zoom()" (input)="cambiarZoom(+zoomControl.value)" aria-label="Zoom de la cámara para códigos QR pequeños" />
+          </label>
+        }
+        @if (linternaDisponible()) {
+          <button class="torch" type="button" [class.active]="linternaEncendida()" [attr.aria-pressed]="linternaEncendida()" (click)="cambiarLinterna()">{{ linternaEncendida() ? 'Apagar luz' : 'Encender luz' }}</button>
+        }
+      </div>
+    }
+  } @else {
+    <div class="camera-error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3V7Z" /><circle cx="12" cy="13" r="4" /><path d="m2 2 20 20" /></svg>
+      <p role="alert">{{ error() }}</p>
+      <button type="button" (click)="iniciar()">Reintentar cámara</button>
+    </div>
+  }
+</div>

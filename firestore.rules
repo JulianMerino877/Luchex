@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Inventario compartido por los usuarios del taller con sesión iniciada.
+    match /productos/{productoId} {
+      function productoValido() {
+        let datos = request.resource.data;
+        return datos.keys().hasAll(['codigo', 'nombre', 'total', 'creado', 'creadoPor'])
+          && datos.keys().hasOnly([
+            'codigo', 'nombre', 'total', 'creado', 'creadoPor', 'actualizado', 'actualizadoPor'
+          ])
+          && datos.codigo is string && datos.codigo.size() > 0 && datos.codigo.size() <= 4096
+          && datos.codigo.matches('[\\s\\S]*\\S[\\s\\S]*')
+          && datos.nombre is string && datos.nombre.size() <= 120
+          && datos.total is int && datos.total >= 0 && datos.total <= 999999
+          && datos.creado is timestamp
+          && datos.creadoPor is string && datos.creadoPor.size() > 0;
+      }
+
+      function edicionValida() {
+        return request.resource.data.keys().hasAll(['actualizado', 'actualizadoPor'])
+          && request.resource.data.actualizado == request.time
+          && request.resource.data.actualizadoPor == request.auth.uid;
+      }
+
+      allow read, delete: if request.auth != null;
+      allow create: if request.auth != null && productoValido()
+        && (
+          (request.resource.data.creado == request.time
+            && request.resource.data.creadoPor == request.auth.uid
+            && !request.resource.data.keys().hasAny(['actualizado', 'actualizadoPor']))
+          // Al cambiar el código, la transacción mueve el documento y conserva su creación.
+          || edicionValida()
+        );
+      allow update: if request.auth != null && productoValido() && edicionValida()
+        && request.resource.data.creado == resource.data.creado
+        && request.resource.data.creadoPor == resource.data.creadoPor;
+    }
+  }
+}

@@ -1,1 +1,138 @@
-<p>INVENTARIO.</p>
+<section class="inventory" aria-labelledby="inventory-title">
+  <header class="page-header">
+    <div class="page-heading">
+      <span class="eyebrow">CONTROL DE PRODUCTOS</span>
+      <h1 id="inventory-title">Inventario<span></span></h1>
+      <p>Tus productos, siempre a la mano.</p>
+    </div>
+    <button class="button primary" type="button" (click)="abrir()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Agregar producto
+    </button>
+  </header>
+
+  @if (aviso()) {
+    <div class="notice success" role="status">
+      <span>{{ aviso() }}</span>
+      <button class="icon-button" type="button" aria-label="Cerrar mensaje" (click)="aviso.set('')">×</button>
+    </div>
+  }
+  @if (errorAccion()) {
+    <div class="notice failure" role="alert">
+      <span>{{ errorAccion() }}</span>
+      <button class="icon-button" type="button" aria-label="Cerrar error" (click)="errorAccion.set('')">×</button>
+    </div>
+  }
+
+  <div class="products-card">
+    @if (avisoFlotante()) {
+      <div class="product-toast" role="status">{{ avisoFlotante() }}</div>
+    }
+    <div class="list-toolbar">
+      <div class="list-heading">
+        <span class="box-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm-9 5 9 5 9-5M12 13v9M7.5 5.5l9 5" /></svg></span>
+        <div><h2>Mis productos <span class="count">{{ productos.productos().length }}</span></h2><p>Consulta por código o nombre</p></div>
+      </div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+        <input #buscar type="search" aria-label="Buscar productos por código o nombre" placeholder="Buscar código o producto…" [value]="busqueda()" (input)="busqueda.set(buscar.value)" />
+        @if (busqueda()) {
+          <button class="icon-button" type="button" aria-label="Limpiar búsqueda" (click)="busqueda.set(''); buscar.focus()">×</button>
+        }
+      </div>
+    </div>
+
+    @if (productos.cargando()) {
+      <div class="empty-state" role="status"><span class="spinner" aria-hidden="true"></span><h3>Cargando inventario…</h3><p>Estamos consultando tus productos.</p></div>
+    } @else if (productos.error()) {
+      <div class="empty-state">
+        <span class="state-icon" aria-hidden="true">!</span>
+        <h3>No pudimos cargar el inventario</h3><p role="alert">{{ productos.error() }}</p>
+        <button class="button secondary" type="button" (click)="productos.cargar()">Volver a intentar</button>
+      </div>
+    } @else if (resultados().length) {
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">Productos registrados en el inventario</caption>
+          <thead><tr><th scope="col">CÓDIGO DEL PRODUCTO</th><th scope="col">NOMBRE</th><th scope="col">STOCK</th><th scope="col">FECHA DE REGISTRO</th><th scope="col">ACCIONES</th></tr></thead>
+          <tbody>
+            @for (producto of resultados(); track producto.id) {
+              <tr>
+                <td data-label="Código"><span class="product-code"><code>{{ producto.codigo }}</code></span></td>
+                <td data-label="Nombre"><span [class.unnamed]="!producto.nombre">{{ producto.nombre || 'Sin nombre' }}</span></td>
+                <td data-label="Stock"><strong class="stock-total">{{ producto.total }}</strong></td>
+                <td data-label="Registro" class="date">{{ producto.creado ? (producto.creado | date:'dd/MM/yyyy · HH:mm') : 'Registrando…' }}</td>
+                <td data-label="Acciones">
+                  <div class="row-actions">
+                    <button type="button" class="action-button" title="Editar producto" [attr.aria-label]="'Editar ' + (producto.nombre || producto.codigo)" [disabled]="!!eliminando()" (click)="editar(producto)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6a2 2 0 0 0-2.8-2.8L5.4 16.2 4 20Zm10.5-12.9 2.8 2.8" /></svg></button>
+                    <button type="button" class="action-button delete-action" title="Eliminar producto" [attr.aria-label]="'Eliminar ' + (producto.nombre || producto.codigo)" [disabled]="!!eliminando()" (click)="eliminar(producto)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5" /></svg></button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer class="list-footer" role="status">Mostrando {{ resultados().length }} de {{ productos.productos().length }} productos</footer>
+    } @else if (busqueda().trim()) {
+      <div class="empty-state"><span class="state-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg></span><h3>No encontramos ese producto</h3><p>Prueba con otro código o nombre.</p><button class="button secondary" type="button" (click)="busqueda.set('')">Ver todos los productos</button></div>
+    } @else {
+      <div class="empty-state">
+        <span class="state-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm-9 5 9 5 9-5M12 13v9M7.5 5.5l9 5" /></svg></span>
+        <h3>Tu inventario empieza aquí</h3><p>Escanea el QR de tu primer producto.<br />Con su código es suficiente; el nombre lo decides tú.</p>
+        <button class="button secondary" type="button" (click)="abrir()">Agregar mi primer producto</button>
+      </div>
+    }
+  </div>
+  <p class="inventory-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M8 8h8v8H8Z" /></svg>Un código único por producto. Registro rápido con QR.</p>
+</section>
+
+<dialog #dialogo class="product-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-description" (cancel)="cerrar($event)">
+  <div class="dialog-header">
+    <div><span class="eyebrow">{{ editando() ? 'EDITAR REGISTRO' : 'NUEVO REGISTRO' }}</span><h2 id="dialog-title">{{ editando() ? 'Editar producto' : 'Agregar producto' }}</h2></div>
+    <button class="icon-button close-dialog" type="button" aria-label="Cerrar formulario" [disabled]="guardando()" (click)="cerrar()" autofocus>×</button>
+  </div>
+  <p id="dialog-description" class="dialog-description">{{ editando() ? 'Actualiza los datos del producto.' : 'Escanea el QR para completar el código o escríbelo abajo.' }}</p>
+
+  @if (abierto() && escaneando() && !editando()) {
+    <app-qr-scanner (codigoDetectado)="recibirCodigo($event)" />
+  }
+  @if (escaneado() && !escaneando()) {
+    <p class="scan-success" role="status">✓ QR leído. Revisa el código y guarda el producto.</p>
+  }
+  @if (!editando() && !escaneando() && !guardando()) {
+    <button class="rescan" type="button" (click)="escaneando.set(true); escaneado.set(false)">Volver a escanear QR</button>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate [attr.aria-busy]="guardando()">
+    <div class="field">
+      <label for="product-code">Código del producto <span class="required">*</span></label>
+      <input id="product-code" type="text" formControlName="codigo" placeholder="Escanea el QR o escribe el código" autocomplete="off" spellcheck="false" autocapitalize="off" [attr.aria-invalid]="form.controls.codigo.touched && form.controls.codigo.invalid" (input)="escribirCodigo()" />
+      @if (form.controls.codigo.touched && form.controls.codigo.invalid) {
+        <small class="field-error" role="alert">Ingresa un código de 1 a 4096 caracteres que no contenga solo espacios.</small>
+      }
+    </div>
+    <div class="field">
+      <label for="product-name">Nombre del producto <span class="optional">Opcional</span></label>
+      <input #nombreInput id="product-name" type="text" formControlName="nombre" placeholder="Ej. Pastillas de freno" autocomplete="off" [attr.aria-invalid]="form.controls.nombre.touched && form.controls.nombre.invalid" />
+      @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+        <small class="field-error" role="alert">El nombre puede tener hasta 120 caracteres.</small>
+      }
+    </div>
+    <div class="field">
+      <label for="product-total">Total del producto <span class="required">*</span></label>
+      <input id="product-total" type="number" formControlName="total" min="0" max="999999" step="1" inputmode="numeric" placeholder="Ej. 10" [attr.aria-invalid]="form.controls.total.touched && form.controls.total.invalid" />
+      @if (form.controls.total.touched && form.controls.total.invalid) {
+        <small class="field-error" role="alert">Ingresa una cantidad entera entre 0 y 999999.</small>
+      }
+    </div>
+    @if (error()) { <p class="notice failure" role="alert">{{ error() }}</p> }
+    <div class="dialog-actions">
+      <button class="button secondary" type="button" [disabled]="guardando()" (click)="cerrar()">Cancelar</button>
+      <button class="button primary" type="submit" [disabled]="guardando()">
+        @if (guardando()) { <span class="spinner small-spinner" aria-hidden="true"></span> }
+        {{ guardando() ? 'Guardando…' : editando() ? 'Guardar cambios' : 'Guardar producto' }}
+      </button>
+    </div>
+  </form>
+</dialog>
