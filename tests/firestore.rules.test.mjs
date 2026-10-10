@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { after, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, getDocs, collection, runTransaction, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, getDocs, collection, runTransaction, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 let environment;
 let db;
@@ -11,6 +11,13 @@ const producto = () => ({
   creado: serverTimestamp(), creadoPor: 'operador',
 });
 const referencia = () => doc(db, 'productos', 'codigo_REP%2F001');
+const orden = () => ({
+  folio: 'OT-2026-001', cliente: 'Ana', moto: 'Honda CB190', estado: 'pendiente',
+  observaciones: '', servicios: [{ id: 'servicio-1', nombre: 'Afinamiento', precio: 80 }],
+  manoObra: 25, fecha: Timestamp.fromDate(new Date('2026-10-03T12:00:00Z')),
+  creado: serverTimestamp(), creadoPor: 'operador',
+});
+const referenciaOrden = () => doc(db, 'ordenes', 'orden-1');
 
 before(async () => {
   environment = await initializeTestEnvironment({
@@ -86,4 +93,31 @@ test('otro usuario del taller puede cambiar código por transacción conservando
   assert.equal(guardado.creadoPor, 'operador');
   assert.ok(guardado.creado.isEqual(original.creado));
   assert.equal(guardado.total, 25);
+});
+
+test('el usuario autenticado crea, consulta y edita una orden', async () => {
+  await assertSucceeds(setDoc(referenciaOrden(), orden()));
+  assert.equal((await assertSucceeds(getDoc(referenciaOrden()))).data().cliente, 'Ana');
+  await assertSucceeds(updateDoc(referenciaOrden(), {
+    estado: 'proceso', actualizado: serverTimestamp(), actualizadoPor: 'operador',
+  }));
+  assert.equal((await getDoc(referenciaOrden())).data().estado, 'proceso');
+});
+
+test('deniega órdenes sin sesión y rechaza datos inválidos', async () => {
+  const anon = environment.unauthenticatedContext().firestore();
+  await assertFails(getDocs(collection(anon, 'ordenes')));
+  await assertFails(setDoc(doc(anon, 'ordenes', 'anonima'), orden()));
+  await assertFails(setDoc(referenciaOrden(), { ...orden(), estado: 'desconocido' }));
+  await assertFails(setDoc(referenciaOrden(), { ...orden(), cliente: '' }));
+  await assertFails(setDoc(referenciaOrden(), { ...orden(), creadoPor: 'otro' }));
+});
+
+test('preserva la autoría de la orden y no permite eliminarla', async () => {
+  await setDoc(referenciaOrden(), orden());
+  await assertFails(updateDoc(referenciaOrden(), { estado: 'listo' }));
+  await assertFails(updateDoc(referenciaOrden(), {
+    creadoPor: 'otro', actualizado: serverTimestamp(), actualizadoPor: 'operador',
+  }));
+  await assertFails(deleteDoc(referenciaOrden()));
 });

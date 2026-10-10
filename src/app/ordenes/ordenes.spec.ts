@@ -1,12 +1,16 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Ordenes } from './ordenes';
+import { OrdenesService } from './ordenes.service';
+import { OrdenTrabajo } from '../taller/taller.models';
 
 describe('Órdenes: listado', () => {
   let fixture: ComponentFixture<Ordenes>;
-  let lectura: jasmine.Spy;
-  let escritura: jasmine.Spy;
-  const orden = {
+  let ordenesSignal: ReturnType<typeof signal<OrdenTrabajo[]>>;
+  let guardar: jasmine.Spy;
+  let actualizar: jasmine.Spy;
+  const orden: OrdenTrabajo = {
     id: 'existente', folio: 'OT-2026-001', cliente: 'rojas', moto: 'rojo',
     estado: 'pendiente', observaciones: 'Conservar observaciones',
     servicios: [{ id: 'servicio', nombre: 'Cambio de aceite', precio: 35 }],
@@ -14,9 +18,24 @@ describe('Órdenes: listado', () => {
   };
 
   beforeEach(async () => {
-    lectura = spyOn(Storage.prototype, 'getItem').and.returnValue(JSON.stringify([orden]));
-    escritura = spyOn(Storage.prototype, 'setItem');
-    await TestBed.configureTestingModule({ imports: [Ordenes], providers: [provideRouter([])] }).compileComponents();
+    ordenesSignal = signal([orden]);
+    guardar = jasmine.createSpy('guardar').and.callFake(async (guardada: OrdenTrabajo, editando: boolean) => {
+      ordenesSignal.update(lista => editando
+        ? lista.map(item => item.id === guardada.id ? guardada : item)
+        : [guardada, ...lista]);
+    });
+    actualizar = jasmine.createSpy('actualizar').and.callFake(async (actualizada: OrdenTrabajo) => {
+      ordenesSignal.update(lista => lista.map(item => item.id === actualizada.id ? actualizada : item));
+    });
+    await TestBed.configureTestingModule({
+      imports: [Ordenes],
+      providers: [
+        provideRouter([]),
+        { provide: OrdenesService, useValue: {
+          ordenes: ordenesSignal, cargando: signal(false), error: signal(''), guardar, actualizar,
+        } },
+      ],
+    }).compileComponents();
   });
 
   function abrir(): void {
@@ -36,14 +55,15 @@ describe('Órdenes: listado', () => {
     expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.order-folio').textContent).toBe('OT#1');
     expect(fixture.nativeElement.querySelector('.table-footer').textContent).toContain('Mostrando 1 de 1 orden');
-    expect(escritura).not.toHaveBeenCalled();
+    expect(guardar).not.toHaveBeenCalled();
     fixture.nativeElement.querySelector('.edit-button').click();
     fixture.detectChanges();
     tick();
     expect(fixture.nativeElement.querySelector('textarea').value).toBe(orden.observaciones);
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    flushMicrotasks();
     fixture.detectChanges();
-    expect(JSON.parse(escritura.calls.mostRecent().args[1])).toEqual([orden]);
+    expect(guardar).toHaveBeenCalledWith(orden, true);
     expect(fixture.nativeElement.querySelector('.notice').textContent).toContain('Orden OT#1 actualizada correctamente.');
     tick(1999);
     fixture.detectChanges();
@@ -68,39 +88,42 @@ describe('Órdenes: listado', () => {
     fixture.nativeElement.querySelectorAll('.status-filters button')[0].click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.edit-button')).not.toBeNull();
-    expect(escritura).not.toHaveBeenCalled();
+    expect(guardar).not.toHaveBeenCalled();
   });
 
-  it('cambia el estado en ciclo y guarda cada cambio', () => {
+  it('cambia el estado en ciclo y guarda cada cambio', fakeAsync(() => {
     abrir();
     const estado = (): HTMLButtonElement => fixture.nativeElement.querySelector('.status-badge');
 
     estado().click();
+    flushMicrotasks();
     fixture.detectChanges();
     expect(estado().textContent?.trim()).toBe('En proceso');
     expect(estado().dataset['status']).toBe('proceso');
-    expect(JSON.parse(escritura.calls.mostRecent().args[1])[0].estado).toBe('proceso');
+    expect(actualizar.calls.mostRecent().args[0].estado).toBe('proceso');
     expect(fixture.nativeElement.querySelector('.notice').textContent).toContain('Estado de OT#1 cambiado a En proceso.');
 
     estado().click();
+    flushMicrotasks();
     fixture.detectChanges();
     expect(estado().textContent?.trim()).toBe('Listo');
     expect(estado().dataset['status']).toBe('listo');
-    expect(JSON.parse(escritura.calls.mostRecent().args[1])[0].estado).toBe('listo');
+    expect(actualizar.calls.mostRecent().args[0].estado).toBe('listo');
 
     estado().click();
+    flushMicrotasks();
     fixture.detectChanges();
     expect(estado().textContent?.trim()).toBe('Pendiente');
     expect(estado().dataset['status']).toBe('pendiente');
-    expect(JSON.parse(escritura.calls.mostRecent().args[1])[0].estado).toBe('pendiente');
-    expect(escritura).toHaveBeenCalledTimes(3);
-  });
+    expect(actualizar.calls.mostRecent().args[0].estado).toBe('pendiente');
+    expect(actualizar).toHaveBeenCalledTimes(3);
+  }));
 
   it('pagina los resultados y vuelve a la primera página al buscar', () => {
-    lectura.and.returnValue(JSON.stringify(Array.from({ length: 13 }, (_, i) => ({
+    ordenesSignal.set(Array.from({ length: 13 }, (_, i) => ({
       ...orden, id: String(i), folio: `OT-${i}`, cliente: `Cliente ${i}`,
       fecha: `2026-09-${String(i + 1).padStart(2, '0')}T12:00:00Z`,
-    }))));
+    })));
     abrir();
     expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(12);
     expect(fixture.nativeElement.querySelector('tbody tr').textContent).toContain('OT#12');
@@ -111,6 +134,6 @@ describe('Órdenes: listado', () => {
     buscar('Cliente 12');
     expect(fixture.nativeElement.querySelector('.current-page').textContent).toBe('1');
     expect(fixture.nativeElement.querySelector('tbody tr').textContent).toContain('OT#12');
-    expect(escritura).not.toHaveBeenCalled();
+    expect(guardar).not.toHaveBeenCalled();
   });
 });

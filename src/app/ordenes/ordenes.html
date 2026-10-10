@@ -82,8 +82,8 @@
           } @empty {
             <tr class="empty-row"><td colspan="6" class="empty-table">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9h6m-6 4h6" /></svg>
-              <strong>{{ busqueda() ? 'No se encontraron coincidencias' : 'No hay órdenes' }}</strong>
-              <span>{{ busqueda() || estadoFiltro() !== 'todas' ? 'Prueba con otro filtro o búsqueda.' : 'Las órdenes que registres aparecerán aquí.' }}</span>
+              <strong>{{ cargandoOrdenes() ? 'Cargando órdenes…' : errorOrdenes() || (busqueda() ? 'No se encontraron coincidencias' : 'No hay órdenes') }}</strong>
+              <span>{{ cargandoOrdenes() ? 'Consultando Firestore.' : errorOrdenes() ? 'Inténtalo nuevamente en unos momentos.' : busqueda() || estadoFiltro() !== 'todas' ? 'Prueba con otro filtro o búsqueda.' : 'Las órdenes que registres aparecerán aquí.' }}</span>
             </td></tr>
           }
         </tbody>
@@ -93,9 +93,9 @@
     <footer class="table-footer">
       <span role="status">Mostrando {{ primerResultado() }}{{ ultimoResultado() > primerResultado() ? '–' + ultimoResultado() : '' }} de {{ ordenesVisibles().length }} {{ ordenesVisibles().length === 1 ? 'orden' : 'órdenes' }}</span>
       <nav class="pagination" aria-label="Paginación de órdenes">
-        <button type="button" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)">Anterior</button>
+        <button type="button" aria-label="Página anterior" title="Página anterior" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)">‹</button>
         <span class="current-page" aria-current="page" [attr.aria-label]="'Página ' + paginaActual() + ' de ' + totalPaginas()">{{ paginaActual() }}</span>
-        <button type="button" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)">Siguiente</button>
+        <button type="button" aria-label="Página siguiente" title="Página siguiente" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)">›</button>
       </nav>
     </footer>
   </div>
@@ -159,7 +159,7 @@
 
     <footer class="dialog-actions">
       <button class="button secondary" type="button" (click)="cerrar()">Cancelar</button>
-      <button class="button primary" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h12l2 2v14H5V4Zm3 0v6h8V4M8 20v-6h8v6" /></svg>{{ editando() ? 'Guardar cambios' : 'Guardar orden' }}</button>
+      <button class="button primary" type="submit" [disabled]="guardando()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h12l2 2v14H5V4Zm3 0v6h8V4M8 20v-6h8v6" /></svg>{{ guardando() ? 'Guardando…' : editando() ? 'Guardar cambios' : 'Guardar orden' }}</button>
     </footer>
   </form>
 </dialog>

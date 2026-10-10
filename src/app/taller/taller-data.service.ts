@@ -1,24 +1,24 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { OrdenesService } from '../ordenes/ordenes.service';
 import { MetodoPago, OrdenTrabajo, ProductoVenta, Venta } from './taller.models';
 
-const ORDENES_KEY = 'luchex-ordenes';
 const VENTAS_KEY = 'luchex-ventas';
+const DATOS_REINICIADOS_KEY = 'luchex-ordenes-ventas-reiniciadas-v1';
 
 @Injectable({ providedIn: 'root' })
 export class TallerDataService {
-  readonly ordenes = signal<OrdenTrabajo[]>(this.leerOrdenes());
-  readonly ventas = signal<Venta[]>(this.leerVentas());
+  private readonly ordenesFirestore = inject(OrdenesService);
+  readonly ordenes = this.ordenesFirestore.ordenes;
+  readonly cargandoOrdenes = this.ordenesFirestore.cargando;
+  readonly errorOrdenes = this.ordenesFirestore.error;
+  readonly ventas = signal<Venta[]>(this.leerVentasIniciales());
 
-  guardarOrden(orden: OrdenTrabajo, editando: boolean): void {
-    this.ordenes.update(ordenes => editando
-      ? ordenes.map(item => item.id === orden.id ? orden : item)
-      : [orden, ...ordenes]);
-    this.persistirOrdenes();
+  async guardarOrden(orden: OrdenTrabajo, editando: boolean): Promise<void> {
+    await this.ordenesFirestore.guardar(orden, editando);
   }
 
-  actualizarOrden(orden: OrdenTrabajo): void {
-    this.ordenes.update(ordenes => ordenes.map(item => item.id === orden.id ? orden : item));
-    this.persistirOrdenes();
+  async actualizarOrden(orden: OrdenTrabajo): Promise<void> {
+    await this.ordenesFirestore.actualizar(orden);
   }
 
   ventaPorOrden(ordenId: string): Venta | undefined {
@@ -38,8 +38,8 @@ export class TallerDataService {
     return venta;
   }
 
-  crearVentaDirecta(cliente: string, moto: string): Venta {
-    const venta = this.nuevaVenta(null, cliente.trim(), moto.trim());
+  crearVentaDirecta(cliente: string): Venta {
+    const venta = this.nuevaVenta(null, cliente.trim(), '');
     this.ventas.update(ventas => [venta, ...ventas]);
     this.persistirVentas();
     return venta;
@@ -100,7 +100,7 @@ export class TallerDataService {
     this.persistirVentas();
   }
 
-  registrarPago(ventaId: string, metodoPago: MetodoPago = 'efectivo'): void {
+  async registrarPago(ventaId: string, metodoPago: MetodoPago = 'efectivo'): Promise<void> {
     const venta = this.ventas().find(item => item.id === ventaId);
     if (!venta) throw new Error('La venta ya no existe.');
     if (venta.estado === 'pagada') return;
@@ -108,30 +108,28 @@ export class TallerDataService {
       throw new Error('Completa el nombre y la cantidad de todos los productos.');
     }
     const pagadaEn = new Date().toISOString();
+    if (venta.ordenId) {
+      const orden = this.ordenes().find(item => item.id === venta.ordenId);
+      if (!orden) throw new Error('La orden asociada ya no existe.');
+      await this.actualizarOrden({ ...orden, estado: 'pagado' });
+    }
     this.ventas.update(ventas => ventas.map(item => item.id === ventaId
       ? { ...item, estado: 'pagada', metodoPago, pagadaEn }
       : item));
-    if (venta.ordenId) {
-      this.ordenes.update(ordenes => ordenes.map(orden => orden.id === venta.ordenId
-        ? { ...orden, estado: 'pagado' }
-        : orden));
-    }
-    this.persistirOrdenes();
     this.persistirVentas();
   }
 
-  reabrirVenta(ventaId: string): void {
+  async reabrirVenta(ventaId: string): Promise<void> {
     const venta = this.ventas().find(item => item.id === ventaId);
     if (!venta || venta.estado === 'pendiente') return;
+    if (venta.ordenId) {
+      const orden = this.ordenes().find(item => item.id === venta.ordenId);
+      if (!orden) throw new Error('La orden asociada ya no existe.');
+      await this.actualizarOrden({ ...orden, estado: 'listo' });
+    }
     this.ventas.update(ventas => ventas.map(item => item.id === ventaId
       ? { ...item, estado: 'pendiente', metodoPago: null, pagadaEn: null }
       : item));
-    if (venta.ordenId) {
-      this.ordenes.update(ordenes => ordenes.map(orden => orden.id === venta.ordenId
-        ? { ...orden, estado: 'listo' }
-        : orden));
-    }
-    this.persistirOrdenes();
     this.persistirVentas();
   }
 
@@ -151,18 +149,19 @@ export class TallerDataService {
     };
   }
 
-  private leerOrdenes(): OrdenTrabajo[] {
-    return this.leer<Array<OrdenTrabajo & { repuestos?: unknown }>>(ORDENES_KEY, []).map(ordenGuardada => {
-      const { repuestos: _repuestos, ...orden } = ordenGuardada;
-      return { ...orden, servicios: Array.isArray(orden.servicios) ? orden.servicios : [] };
-    });
-  }
-
   private leerVentas(): Venta[] {
     return this.leer<Array<Omit<Venta, 'metodoPago'> & { metodoPago?: MetodoPago | 'tarjeta' | null }>>(VENTAS_KEY, []).map(venta => {
       const metodoPago = venta.metodoPago === 'tarjeta' ? 'efectivo' : venta.metodoPago ?? null;
       return { ...venta, productos: Array.isArray(venta.productos) ? venta.productos : [], metodoPago };
     });
+  }
+
+  private leerVentasIniciales(): Venta[] {
+    if (typeof localStorage !== 'undefined' && !localStorage.getItem(DATOS_REINICIADOS_KEY)) {
+      localStorage.removeItem(VENTAS_KEY);
+      localStorage.setItem(DATOS_REINICIADOS_KEY, 'true');
+    }
+    return this.leerVentas();
   }
 
   private leer<T>(clave: string, predeterminado: T): T {
@@ -174,10 +173,6 @@ export class TallerDataService {
       localStorage.removeItem(clave);
       return predeterminado;
     }
-  }
-
-  private persistirOrdenes(): void {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(ORDENES_KEY, JSON.stringify(this.ordenes()));
   }
 
   private persistirVentas(): void {

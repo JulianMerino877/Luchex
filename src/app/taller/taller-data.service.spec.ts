@@ -1,8 +1,17 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { OrdenesService } from '../ordenes/ordenes.service';
 import { TallerDataService } from './taller-data.service';
 import { OrdenTrabajo, totalOrden, totalProductos } from './taller.models';
 
 describe('TallerDataService: relación orden-venta', () => {
+  let ordenesFirestore: {
+    ordenes: ReturnType<typeof signal<OrdenTrabajo[]>>;
+    cargando: ReturnType<typeof signal<boolean>>;
+    error: ReturnType<typeof signal<string>>;
+    guardar: jasmine.Spy;
+    actualizar: jasmine.Spy;
+  };
   const orden: OrdenTrabajo = {
     id: 'orden-1',
     folio: 'OT-2026-001',
@@ -19,14 +28,24 @@ describe('TallerDataService: relación orden-venta', () => {
   };
 
   beforeEach(() => {
-    localStorage.setItem('luchex-ordenes', JSON.stringify([orden]));
+    localStorage.setItem('luchex-ordenes-ventas-reiniciadas-v1', 'true');
     localStorage.removeItem('luchex-ventas');
-    TestBed.configureTestingModule({});
+    const ordenes = signal<OrdenTrabajo[]>([orden]);
+    ordenesFirestore = {
+      ordenes,
+      cargando: signal(false),
+      error: signal(''),
+      guardar: jasmine.createSpy('guardar'),
+      actualizar: jasmine.createSpy('actualizar').and.callFake(async (actualizada: OrdenTrabajo) => {
+        ordenes.update(lista => lista.map(item => item.id === actualizada.id ? actualizada : item));
+      }),
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: OrdenesService, useValue: ordenesFirestore }] });
   });
 
   afterEach(() => {
-    localStorage.removeItem('luchex-ordenes');
     localStorage.removeItem('luchex-ventas');
+    localStorage.removeItem('luchex-ordenes-ventas-reiniciadas-v1');
   });
 
   it('relaciona por ordenId sin copiar servicios ni repuestos', () => {
@@ -39,7 +58,7 @@ describe('TallerDataService: relación orden-venta', () => {
     expect(servicio.ventas().length).toBe(1);
   });
 
-  it('suma productos adicionales y al pagar actualiza la orden', () => {
+  it('suma productos adicionales y al pagar actualiza la orden', async () => {
     const servicio = TestBed.inject(TallerDataService);
     const venta = servicio.crearVentaDesdeOrden(orden.id);
     servicio.agregarProducto(venta.id, { nombre: 'Casco', cantidad: 1, precioUnitario: 120 });
@@ -49,20 +68,21 @@ describe('TallerDataService: relación orden-venta', () => {
     expect(totalProductos(actualizada)).toBe(120);
     expect(totalOrden(orden) + totalProductos(actualizada)).toBe(205);
 
-    servicio.registrarPago(venta.id, 'yape');
+    await servicio.registrarPago(venta.id, 'yape');
     expect(servicio.ventas()[0].estado).toBe('pagada');
     expect(servicio.ventas()[0].metodoPago).toBe('yape');
     expect(servicio.ordenes()[0].estado).toBe('pagado');
 
-    servicio.reabrirVenta(venta.id);
+    await servicio.reabrirVenta(venta.id);
     expect(servicio.ventas()[0].estado).toBe('pendiente');
     expect(servicio.ventas()[0].metodoPago).toBeNull();
     expect(servicio.ordenes()[0].estado).toBe('listo');
+    expect(ordenesFirestore.actualizar).toHaveBeenCalledTimes(2);
   });
 
   it('permite una venta sin orden', () => {
     const servicio = TestBed.inject(TallerDataService);
-    const venta = servicio.crearVentaDirecta('Luis', '');
+    const venta = servicio.crearVentaDirecta('Luis');
 
     expect(venta.ordenId).toBeNull();
     expect(venta.cliente).toBe('Luis');

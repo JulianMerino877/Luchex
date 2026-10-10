@@ -42,6 +42,8 @@ export class Ordenes {
   ];
   protected readonly nombresEstado = NOMBRES_ESTADO;
   protected readonly ordenes = this.data.ordenes;
+  protected readonly cargandoOrdenes = this.data.cargandoOrdenes;
+  protected readonly errorOrdenes = this.data.errorOrdenes;
   protected readonly busqueda = signal('');
   protected readonly estadoFiltro = signal<EstadoOrden | 'todas'>('todas');
   protected readonly ordenFecha = signal<'recientes' | 'antiguas'>('recientes');
@@ -49,6 +51,7 @@ export class Ordenes {
   protected readonly porPagina = 12;
   protected readonly editando = signal(false);
   protected readonly exportandoExcel = signal(false);
+  protected readonly guardando = signal(false);
   protected readonly intentoGuardar = signal(false);
   protected readonly aviso = signal('');
   protected readonly avisoDesvaneciendo = signal(false);
@@ -162,7 +165,7 @@ export class Ordenes {
     return this.ordenesFiltradas().filter((orden) => orden.estado === estado);
   }
 
-  protected guardar(): void {
+  protected async guardar(): Promise<void> {
     this.intentoGuardar.set(true);
     const orden = this.borrador();
     if (!orden.cliente.trim() || !orden.moto.trim()) return;
@@ -181,9 +184,16 @@ export class Ordenes {
       })),
     };
 
-    this.data.guardarOrden(limpia, this.editando());
-    this.mostrarAviso(`Orden ${this.folioVisible(limpia.folio)} ${this.editando() ? 'actualizada' : 'creada'} correctamente.`);
-    this.cerrar();
+    this.guardando.set(true);
+    try {
+      await this.data.guardarOrden(limpia, this.editando());
+      this.mostrarAviso(`Orden ${this.folioVisible(limpia.folio)} ${this.editando() ? 'actualizada' : 'creada'} correctamente.`);
+      this.cerrar();
+    } catch (error) {
+      this.mostrarAviso(error instanceof Error ? error.message : 'No se pudo guardar la orden.');
+    } finally {
+      this.guardando.set(false);
+    }
   }
 
   protected async descargarExcel(): Promise<void> {
@@ -293,12 +303,16 @@ export class Ordenes {
     return NOMBRES_ESTADO[estado] ?? estado;
   }
 
-  protected alternarEstado(orden: OrdenTrabajo): void {
+  protected async alternarEstado(orden: OrdenTrabajo): Promise<void> {
     const siguiente = SIGUIENTE_ESTADO[orden.estado];
     if (!siguiente || orden.estado === 'pagado') return;
 
-    this.data.actualizarOrden({ ...orden, estado: siguiente });
-    this.mostrarAviso(`Estado de ${this.folioVisible(orden.folio)} cambiado a ${NOMBRES_ESTADO[siguiente]}.`);
+    try {
+      await this.data.actualizarOrden({ ...orden, estado: siguiente });
+      this.mostrarAviso(`Estado de ${this.folioVisible(orden.folio)} cambiado a ${NOMBRES_ESTADO[siguiente]}.`);
+    } catch (error) {
+      this.mostrarAviso(error instanceof Error ? error.message : 'No se pudo cambiar el estado de la orden.');
+    }
   }
 
   protected async enviarAVentas(orden: OrdenTrabajo): Promise<void> {

@@ -1,6 +1,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // RRHH: acceso para cualquier usuario autenticado, sin restricciones por rol.
+    match /mecanicos/{mecanicoId} {
+      function fechaValida(fecha) {
+        return fecha is string && (
+          fecha.matches('(19|20)[0-9]{2}-((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])|(04|06|09|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))')
+          || fecha.matches('((19|20)(0[48]|[2468][048]|[13579][26])|2000)-02-29')
+        );
+      }
+
+      function mecanicoValido() {
+        let datos = request.resource.data;
+        return datos.keys().hasAll([
+            'nombre', 'especialidad', 'fechaIngreso', 'montoPago', 'fechaPago', 'creado', 'creadoPor'
+          ])
+          && datos.keys().hasOnly([
+            'nombre', 'especialidad', 'fechaIngreso', 'montoPago', 'fechaPago',
+            'creado', 'creadoPor', 'actualizado', 'actualizadoPor'
+          ])
+          && datos.nombre is string && datos.nombre.size() <= 120
+          && datos.nombre.matches('[\\s\\S]*\\S[\\s\\S]*')
+          && datos.especialidad is string && datos.especialidad.size() <= 100
+          && datos.especialidad.matches('[\\s\\S]*\\S[\\s\\S]*')
+          && fechaValida(datos.fechaIngreso) && fechaValida(datos.fechaPago)
+          && datos.fechaPago >= datos.fechaIngreso
+          && datos.montoPago is number && datos.montoPago > 0 && datos.montoPago <= 999999.99
+          && math.abs(datos.montoPago * 100 - math.round(datos.montoPago * 100)) < 0.000001
+          && datos.creado is timestamp && datos.creadoPor is string;
+      }
+
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && mecanicoValido()
+        && request.resource.data.creadoPor == request.auth.uid
+        && request.resource.data.creado == request.time
+        && !request.resource.data.keys().hasAny(['actualizado', 'actualizadoPor']);
+      allow update: if request.auth != null && mecanicoValido()
+        && request.resource.data.creado == resource.data.creado
+        && request.resource.data.creadoPor == resource.data.creadoPor
+        && request.resource.data.actualizado == request.time
+        && request.resource.data.actualizadoPor == request.auth.uid;
+    }
+
     // Inventario compartido por los usuarios del taller con sesión iniciada.
     match /productos/{productoId} {
       function productoValido() {
@@ -35,6 +76,47 @@ service cloud.firestore {
       allow update: if request.auth != null && productoValido() && edicionValida()
         && request.resource.data.creado == resource.data.creado
         && request.resource.data.creadoPor == resource.data.creadoPor;
+    }
+
+    // Órdenes compartidas por los usuarios autenticados del taller.
+    match /ordenes/{ordenId} {
+      function ordenValida() {
+        let datos = request.resource.data;
+        return datos.keys().hasAll([
+            'folio', 'cliente', 'moto', 'estado', 'observaciones', 'servicios',
+            'manoObra', 'fecha', 'creado', 'creadoPor'
+          ])
+          && datos.keys().hasOnly([
+            'folio', 'cliente', 'moto', 'estado', 'observaciones', 'servicios',
+            'manoObra', 'fecha', 'creado', 'creadoPor', 'actualizado', 'actualizadoPor'
+          ])
+          && datos.folio is string && datos.folio.size() > 0 && datos.folio.size() <= 30
+          && datos.cliente is string && datos.cliente.size() > 0 && datos.cliente.size() <= 120
+          && datos.moto is string && datos.moto.size() > 0 && datos.moto.size() <= 120
+          && datos.estado in ['pendiente', 'proceso', 'listo', 'pagado']
+          && datos.observaciones is string && datos.observaciones.size() <= 1000
+          && datos.servicios is list && datos.servicios.size() <= 100
+          && datos.manoObra is number && datos.manoObra >= 0 && datos.manoObra <= 1000000
+          && datos.fecha is timestamp
+          && datos.creado is timestamp
+          && datos.creadoPor is string && datos.creadoPor.size() > 0;
+      }
+
+      function edicionOrdenValida() {
+        return request.resource.data.keys().hasAll(['actualizado', 'actualizadoPor'])
+          && request.resource.data.actualizado == request.time
+          && request.resource.data.actualizadoPor == request.auth.uid;
+      }
+
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && ordenValida()
+        && request.resource.data.creado == request.time
+        && request.resource.data.creadoPor == request.auth.uid
+        && !request.resource.data.keys().hasAny(['actualizado', 'actualizadoPor']);
+      allow update: if request.auth != null && ordenValida() && edicionOrdenValida()
+        && request.resource.data.creado == resource.data.creado
+        && request.resource.data.creadoPor == resource.data.creadoPor;
+      allow delete: if false;
     }
   }
 }

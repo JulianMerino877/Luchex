@@ -14,9 +14,8 @@
 
   @if (creandoVenta()) {
     <form class="direct-sale" (ngSubmit)="crearVentaDirecta()">
-      <div><strong>Nueva venta directa</strong><span>Registra una compra sin orden de servicio.</span></div>
-      <label><span>Cliente *</span><input name="cliente" [ngModel]="clienteNuevo()" (ngModelChange)="clienteNuevo.set($event)" placeholder="Nombre del cliente" /></label>
-      <label><span>Moto (opcional)</span><input name="moto" [ngModel]="motoNueva()" (ngModelChange)="motoNueva.set($event)" placeholder="Modelo o placa" /></label>
+      <div class="direct-sale-title"><strong>Nueva venta</strong></div>
+      <label><span>Cliente *</span><input name="cliente" autocomplete="name" [ngModel]="clienteNuevo()" (ngModelChange)="clienteNuevo.set($event)" placeholder="Escribe el nombre" /></label>
       <div class="direct-actions"><button class="button secondary" type="button" (click)="creandoVenta.set(false)">Cancelar</button><button class="button primary" type="submit">Crear venta</button></div>
     </form>
   }

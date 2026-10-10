@@ -33,7 +33,6 @@ export class Ventas {
   });
   protected readonly creandoVenta = signal(false);
   protected readonly clienteNuevo = signal('');
-  protected readonly motoNueva = signal('');
   protected readonly mostrarServicios = signal(false);
   protected readonly metodoPago = signal<MetodoPago>('efectivo');
   protected readonly aviso = signal('');
@@ -65,10 +64,9 @@ export class Ventas {
       this.aviso.set('Ingresa el nombre del cliente para crear la venta.');
       return;
     }
-    const venta = this.data.crearVentaDirecta(cliente, this.motoNueva());
+    const venta = this.data.crearVentaDirecta(cliente);
     this.seleccionadaId.set(venta.id);
     this.clienteNuevo.set('');
-    this.motoNueva.set('');
     this.creandoVenta.set(false);
     this.aviso.set('Venta directa creada. Agrega los productos que comprará el cliente.');
   }
@@ -103,13 +101,13 @@ export class Ventas {
     this.seleccionadaId.set('');
   }
 
-  protected marcarComoPagado(): void {
+  protected async marcarComoPagado(): Promise<void> {
     const venta = this.ventaSeleccionada();
     if (!venta || venta.estado === 'pagada' || this.totalVenta(venta) <= 0) return;
     const metodo = this.metodoPago();
     if (!metodo) return;
     try {
-      this.data.registrarPago(venta.id, metodo);
+      await this.data.registrarPago(venta.id, metodo);
       this.aviso.set(venta.ordenId
         ? 'Venta marcada como pagada. La orden asociada cambió automáticamente a Pagado.'
         : 'Venta marcada como pagada correctamente.');
@@ -119,12 +117,16 @@ export class Ventas {
     }
   }
 
-  protected modificarVenta(): void {
+  protected async modificarVenta(): Promise<void> {
     const venta = this.ventaSeleccionada();
     if (!venta || venta.estado !== 'pagada') return;
-    this.data.reabrirVenta(venta.id);
-    this.metodoPago.set('efectivo');
-    this.aviso.set('La venta está habilitada nuevamente para modificarla.');
+    try {
+      await this.data.reabrirVenta(venta.id);
+      this.metodoPago.set('efectivo');
+      this.aviso.set('La venta está habilitada nuevamente para modificarla.');
+    } catch (error) {
+      this.aviso.set(error instanceof Error ? error.message : 'No se pudo modificar la venta.');
+    }
   }
 
   protected ordenDe(venta: Venta): OrdenTrabajo | null {
