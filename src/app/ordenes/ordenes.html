@@ -1,1 +1,165 @@
-<p>El módulo de Órdenes está funcionando.</p>
+<section class="orders" aria-labelledby="orders-title">
+  <header class="page-header">
+    <div class="page-heading"><h1 id="orders-title">Órdenes de trabajo</h1></div>
+    <div class="header-actions">
+      <button class="button primary" type="button" (click)="abrirNueva()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Nueva orden
+      </button>
+    </div>
+  </header>
+
+  @if (aviso()) {
+    <div class="notice" [class.fading]="avisoDesvaneciendo()" role="status">
+      <span>{{ aviso() }}</span>
+      <button type="button" aria-label="Cerrar mensaje" (click)="ocultarAviso()">×</button>
+    </div>
+  }
+
+  <div class="orders-panel">
+    <div class="toolbar">
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+        <span class="sr-only">Buscar órdenes</span>
+        <input #buscar type="search" placeholder="Buscar orden, cliente, moto o servicio…" [value]="busqueda()" (input)="buscarOrdenes(buscar.value)" />
+        @if (busqueda()) { <button type="button" aria-label="Limpiar búsqueda" (click)="buscarOrdenes(''); buscar.focus()">×</button> }
+      </label>
+      <div class="toolbar-actions">
+        <button class="button excel-button" type="button" [disabled]="exportandoExcel()" (click)="descargarExcel()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6V3Zm9 0v5h4M9 12l5 6m0-6-5 6" /></svg>
+          {{ exportandoExcel() ? 'Generando…' : 'Excel' }}
+        </button>
+        <label class="date-filter">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M16 3v4M8 3v4M4 11h16" /></svg>
+          <span class="sr-only">Ordenar por fecha</span>
+          <select [ngModel]="ordenFecha()" (ngModelChange)="ordenarPorFecha($event)">
+            <option value="recientes">Fecha: más recientes</option>
+            <option value="antiguas">Fecha: más antiguas</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <nav class="status-filters" aria-label="Filtrar órdenes por estado">
+      <button type="button" [class.active]="estadoFiltro() === 'todas'" [attr.aria-pressed]="estadoFiltro() === 'todas'" (click)="filtrarEstado('todas')">Todas <span>{{ ordenesFiltradas().length }}</span></button>
+      @for (columna of columnas; track columna.estado) {
+        <button type="button" [class.active]="estadoFiltro() === columna.estado" [attr.aria-pressed]="estadoFiltro() === columna.estado" (click)="filtrarEstado(columna.estado)">{{ columna.titulo }} <span>{{ ordenesPorEstado(columna.estado).length }}</span></button>
+      }
+    </nav>
+
+    <div class="table-scroll" role="region" aria-label="Listado de órdenes de trabajo" tabindex="0">
+      <table>
+        <thead><tr><th scope="col">Orden</th><th scope="col">Cliente</th><th scope="col">Moto</th><th scope="col" class="status-column">Estado</th><th scope="col">Fecha</th><th scope="col" class="actions-column">Acciones</th></tr></thead>
+        <tbody>
+          @for (orden of ordenesPagina(); track orden.id) {
+            <tr>
+              <td class="order-folio" data-label="Orden">{{ folioVisible(orden.folio) }}</td>
+              <td data-label="Cliente">{{ orden.cliente }}</td>
+              <td data-label="Moto">{{ orden.moto }}</td>
+              <td class="status-column" data-label="Estado">
+                <button
+                  class="status-badge"
+                  type="button"
+                  [attr.data-status]="orden.estado"
+                  [attr.aria-label]="'Cambiar estado de ' + folioVisible(orden.folio) + '. Estado actual: ' + nombresEstado[orden.estado]"
+                  [title]="orden.estado === 'pagado' ? 'Orden pagada' : 'Cambiar estado'"
+                  [disabled]="orden.estado === 'pagado'"
+                  (click)="alternarEstado(orden)"
+                >{{ nombresEstado[orden.estado] }}</button>
+              </td>
+              <td class="order-date" data-label="Fecha">{{ orden.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="actions-column" data-label="Acciones">
+                @if (orden.estado === 'listo' || tieneVenta(orden.id)) {
+                  <button class="charge-button" type="button" [attr.aria-label]="'Cobrar orden ' + folioVisible(orden.folio)" [title]="tieneVenta(orden.id) ? 'Ver en Ventas' : 'Cobrar orden'" (click)="enviarAVentas(orden)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4V7Zm0 4h16M16 15h1" /></svg>
+                  </button>
+                }
+                <button class="edit-button" type="button" [disabled]="orden.estado === 'pagado'" [attr.aria-label]="'Editar orden ' + folioVisible(orden.folio)" [title]="orden.estado === 'pagado' ? 'La orden pagada no se puede editar' : 'Editar orden'" (click)="abrirEdicion(orden)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 11-11a2 2 0 0 0-3-3L5 16l-1 4Zm11-13 3 3" /></svg>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr class="empty-row"><td colspan="6" class="empty-table">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9h6m-6 4h6" /></svg>
+              <strong>{{ cargandoOrdenes() ? 'Cargando órdenes…' : errorOrdenes() || (busqueda() ? 'No se encontraron coincidencias' : 'No hay órdenes') }}</strong>
+              <span>{{ cargandoOrdenes() ? 'Consultando Firestore.' : errorOrdenes() ? 'Inténtalo nuevamente en unos momentos.' : busqueda() || estadoFiltro() !== 'todas' ? 'Prueba con otro filtro o búsqueda.' : 'Las órdenes que registres aparecerán aquí.' }}</span>
+            </td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="table-footer">
+      <span role="status">Mostrando {{ primerResultado() }}{{ ultimoResultado() > primerResultado() ? '–' + ultimoResultado() : '' }} de {{ ordenesVisibles().length }} {{ ordenesVisibles().length === 1 ? 'orden' : 'órdenes' }}</span>
+      <nav class="pagination" aria-label="Paginación de órdenes">
+        <button type="button" aria-label="Página anterior" title="Página anterior" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)">‹</button>
+        <span class="current-page" aria-current="page" [attr.aria-label]="'Página ' + paginaActual() + ' de ' + totalPaginas()">{{ paginaActual() }}</span>
+        <button type="button" aria-label="Página siguiente" title="Página siguiente" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)">›</button>
+      </nav>
+    </footer>
+  </div>
+</section>
+
+<dialog #dialogo class="order-dialog" aria-labelledby="dialog-title" (cancel)="cerrar($event)">
+  <form (ngSubmit)="guardar()" novalidate>
+    <header class="dialog-header">
+      <div class="dialog-title-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2h6v2M9 10h6m-6 4h6" /></svg></div>
+      <div><span class="eyebrow">{{ editando() ? borrador().folio : 'NUEVO REGISTRO' }}</span><h2 id="dialog-title">{{ editando() ? 'Editar orden de trabajo' : 'Nueva orden de trabajo' }}</h2></div>
+      <button class="close-button" type="button" aria-label="Cerrar formulario" (click)="cerrar()">×</button>
+    </header>
+
+    <div class="form-body">
+      <div class="form-grid">
+        <label class="field">
+          <span>Cliente <b>*</b></span>
+          <span class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3" /><path d="M5 20a7 7 0 0 1 14 0" /></svg><input name="cliente" type="text" autocomplete="name" placeholder="Nombre del cliente" [ngModel]="borrador().cliente" (ngModelChange)="actualizar('cliente', $event)" [class.invalid]="intentoGuardar() && !borrador().cliente.trim()" /></span>
+          @if (intentoGuardar() && !borrador().cliente.trim()) { <small>Ingresa el nombre del cliente.</small> }
+        </label>
+        <label class="field">
+          <span>Moto <b>*</b></span>
+          <span class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="17" r="3" /><circle cx="19" cy="17" r="3" /><path d="M8 17h5l-3-7h4l3 7M7 8h4m3 2 2-2h3" /></svg><input name="moto" type="text" placeholder="Marca, modelo o placa" [ngModel]="borrador().moto" (ngModelChange)="actualizar('moto', $event)" [class.invalid]="intentoGuardar() && !borrador().moto.trim()" /></span>
+          @if (intentoGuardar() && !borrador().moto.trim()) { <small>Ingresa los datos de la moto.</small> }
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Estado</span>
+        <span class="input-wrap select-wrap"><span class="status-dot" [attr.data-current]="borrador().estado"></span><select name="estado" [disabled]="borrador().estado === 'pagado'" [ngModel]="borrador().estado" (ngModelChange)="actualizar('estado', $event)"><option value="pendiente">Pendiente</option><option value="proceso">En proceso</option><option value="listo">Listo</option><option value="pagado">Pagado</option></select></span>
+      </label>
+
+      <label class="field">
+        <span>Observaciones</span>
+        <textarea name="observaciones" rows="3" [ngModel]="borrador().observaciones" (ngModelChange)="actualizar('observaciones', $event)"></textarea>
+      </label>
+
+      @if (editando()) {
+      <section class="services-section" aria-labelledby="services-title">
+        <div class="services-heading"><div><h3 id="services-title">Servicios realizados</h3></div><button class="add-service" type="button" (click)="agregarServicio()"><span>+</span> Agregar servicio</button></div>
+        <div class="service-list">
+          @for (servicio of borrador().servicios; track servicio.id; let i = $index) {
+            <div class="service-row">
+              <span class="service-number">{{ i + 1 }}</span>
+              <label><span class="sr-only">Nombre del servicio {{ i + 1 }}</span><input type="text" [name]="'servicio-' + servicio.id" placeholder="Ej. Cambio de aceite" [ngModel]="servicio.nombre" (ngModelChange)="actualizarServicio(servicio.id, 'nombre', $event)" [class.invalid]="intentoGuardar() && !servicio.nombre.trim()" /></label>
+              <label class="price-input"><span>S/</span><input type="number" min="0" step="0.01" inputmode="decimal" [name]="'precio-' + servicio.id" placeholder="0.00" [ngModel]="servicio.precio" (ngModelChange)="actualizarServicio(servicio.id, 'precio', $event)" /></label>
+              <button class="remove-service" type="button" [attr.aria-label]="'Quitar servicio ' + (i + 1)" (click)="quitarServicio(servicio.id)">×</button>
+            </div>
+          } @empty {
+            <div class="no-services"><span>+</span><p>Aún no hay servicios registrados.</p><button type="button" (click)="agregarServicio()">Agregar el primero</button></div>
+          }
+        </div>
+      </section>
+
+      <section class="totals" aria-label="Costos de la orden">
+        <label><span>Mano de obra</span><span class="price-input"><span>S/</span><input name="manoObra" type="number" min="0" step="0.01" inputmode="decimal" [ngModel]="borrador().manoObra" (ngModelChange)="actualizar('manoObra', $event)" /></span></label>
+        <div class="total-lines"><p><span>Total servicios</span><strong>{{ totalServicios() | currency:'PEN':'S/ ':'1.2-2' }}</strong></p><p class="grand-total"><span>Total de la orden</span><strong>{{ totalOrden() | currency:'PEN':'S/ ':'1.2-2' }}</strong></p></div>
+      </section>
+      }
+    </div>
+
+    <footer class="dialog-actions">
+      <button class="button secondary" type="button" (click)="cerrar()">Cancelar</button>
+      <button class="button primary" type="submit" [disabled]="guardando()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h12l2 2v14H5V4Zm3 0v6h8V4M8 20v-6h8v6" /></svg>{{ guardando() ? 'Guardando…' : editando() ? 'Guardar cambios' : 'Guardar orden' }}</button>
+    </footer>
+  </form>
+</dialog>

@@ -1,1 +1,131 @@
-<p>El módulo de Ventas está funcionando.</p>
+<section class="sales" aria-labelledby="sales-title">
+  <header class="page-header">
+    <div class="page-heading"><h1 id="sales-title">Ventas</h1></div>
+    <time>{{ fechaActual }}</time>
+  </header>
+
+  <section class="metrics" aria-label="Resumen de ventas">
+    <article class="today"><strong>{{ recaudadoHoy() | currency:'PEN':'S/ ':'1.2-2' }}</strong><span>Recaudado hoy</span></article>
+    <article class="month"><strong>{{ recaudadoMes() | currency:'PEN':'S/ ':'1.2-2' }}</strong><span>Recaudado este mes</span></article>
+    <article class="count"><strong>{{ cantidadMes() }}</strong><span>Ventas del mes</span></article>
+  </section>
+
+  @if (aviso()) { <div class="notice" role="status">{{ aviso() }}</div> }
+
+  @if (creandoVenta()) {
+    <form class="direct-sale" (ngSubmit)="crearVentaDirecta()">
+      <div class="direct-sale-title"><strong>Nueva venta</strong></div>
+      <label><span>Cliente *</span><input name="cliente" autocomplete="name" [ngModel]="clienteNuevo()" (ngModelChange)="clienteNuevo.set($event)" placeholder="Escribe el nombre" /></label>
+      <div class="direct-actions"><button class="button secondary" type="button" (click)="creandoVenta.set(false)">Cancelar</button><button class="button primary" type="submit">Crear venta</button></div>
+    </form>
+  }
+
+  <section class="registry" aria-labelledby="registry-title">
+    <header class="registry-header">
+      <h2 id="registry-title">Registro de Ventas</h2>
+      <button class="button primary new-sale" type="button" (click)="creandoVenta.set(true)"><span>+</span> Nueva venta</button>
+    </header>
+
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+      <span class="sr-only">Buscar ventas</span>
+      <input #buscar type="search" placeholder="Buscar por cliente, producto, servicio o forma de pago..." [value]="busqueda()" (input)="busqueda.set(buscar.value)" />
+      @if (busqueda()) { <button type="button" aria-label="Limpiar búsqueda" (click)="busqueda.set(''); buscar.focus()">×</button> }
+    </label>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Cliente</th><th>Servicio / Producto</th><th>Forma de pago</th><th>Total</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <tbody>
+          @for (venta of ventasFiltradas(); track venta.id) {
+            <tr [class.selected]="seleccionadaId() === venta.id">
+              <td data-label="Cliente"><strong>{{ clienteDe(venta) }}</strong><small>{{ venta.folio }}</small></td>
+              <td data-label="Servicio / Producto"><span class="content-type" [class.mixed]="venta.ordenId && venta.productos.length">{{ tipoContenidoDe(venta) }}</span></td>
+              <td data-label="Forma de pago"><span class="payment" [attr.data-method]="venta.estado === 'pagada' ? (venta.metodoPago || 'pendiente') : 'pendiente'">{{ nombreMetodo(venta) }}</span></td>
+              <td data-label="Total" class="amount">{{ totalVenta(venta) | currency:'PEN':'S/ ':'1.2-2' }}</td>
+              <td data-label="Fecha">{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td data-label="Acciones" class="actions"><button type="button" title="Gestionar venta" [attr.aria-label]="'Gestionar ' + venta.folio" (click)="seleccionar(venta)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 11-11a2 2 0 0 0-3-3L5 16l-1 4Zm11-13 3 3" /></svg></button></td>
+            </tr>
+          } @empty {
+            <tr class="empty-row"><td colspan="6"><strong>No se encontraron ventas</strong><span>{{ busqueda() ? 'Prueba con otra búsqueda.' : 'Envía una orden lista o crea una venta directa.' }}</span></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="registry-footer"><span>Total recaudado hoy</span><strong>{{ recaudadoHoy() | currency:'PEN':'S/ ':'1.2-2' }}</strong></footer>
+  </section>
+
+  @if (seleccionadaId()) {
+    @if (ventaSeleccionada(); as venta) {
+      <div class="detail-backdrop" (click)="seleccionadaId.set('')">
+      <section class="sale-detail" aria-labelledby="detail-title" (click)="$event.stopPropagation()">
+        <header class="detail-header">
+          <div><span>{{ venta.ordenId ? 'VENTA VINCULADA A ORDEN' : 'VENTA DIRECTA' }}</span><h2 id="detail-title">Gestionar venta</h2><p>{{ venta.folio }} · {{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</p></div>
+          <button class="close-detail" type="button" aria-label="Cerrar detalle" (click)="seleccionadaId.set('')">×</button>
+        </header>
+
+        <div class="detail-body">
+        <section class="customer-card">
+          <div><span>Cliente</span><strong>{{ ordenSeleccionada()?.cliente || venta.cliente }}</strong></div>
+          <div><span>Motocicleta</span><strong>{{ ordenSeleccionada()?.moto || venta.moto || 'No registrada' }}</strong></div>
+          @if (ordenSeleccionada(); as orden) {
+            <button class="services-toggle" type="button" [attr.aria-expanded]="mostrarServicios()" (click)="mostrarServicios.set(!mostrarServicios())">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9h6m-6 4h6" /></svg>
+              {{ mostrarServicios() ? 'Ocultar servicios' : 'Ver servicios' }}
+            </button>
+          }
+        </section>
+
+        @if (ordenSeleccionada(); as orden) {
+          @if (mostrarServicios()) {
+          <section class="concept order-concept">
+            <header><div><h3>Servicios</h3></div><strong>{{ subtotalOrden(orden) | currency:'PEN':'S/ ':'1.2-2' }}</strong></header>
+            <div class="order-details">
+              @for (servicio of orden.servicios; track servicio.id) { <p><span>{{ servicio.nombre }}</span><strong>{{ servicio.precio | currency:'PEN':'S/ ':'1.2-2' }}</strong></p> }
+              @if (orden.manoObra > 0) { <p><span>Mano de obra</span><strong>{{ orden.manoObra | currency:'PEN':'S/ ':'1.2-2' }}</strong></p> }
+            </div>
+          </section>
+          }
+        }
+
+        <section class="concept products-concept">
+          <header><div><h3>Productos</h3></div>@if (venta.estado === 'pendiente') { <button class="add-item" type="button" (click)="agregarProducto()"><span>+</span> Agregar producto</button> }</header>
+          @if (venta.estado === 'pendiente' && venta.productos.length) {
+            <div class="product-columns" aria-hidden="true"><span>Producto</span><span>Cant.</span><span>Precio unitario</span><span></span></div>
+          }
+          <div class="product-list">
+            @for (producto of venta.productos; track producto.id; let i = $index) {
+              @if (venta.estado === 'pendiente') {
+                <div class="product-editor">
+                  <label><span class="sr-only">Producto {{ i + 1 }}</span><input [name]="'producto-' + producto.id" [ngModel]="producto.nombre" (ngModelChange)="actualizarProducto(producto.id, 'nombre', $event)" placeholder="Ej. Casco" /></label>
+                  <label><span class="sr-only">Cantidad del producto {{ i + 1 }}</span><input [name]="'cantidad-' + producto.id" type="number" min="1" step="1" [ngModel]="producto.cantidad" (ngModelChange)="actualizarProducto(producto.id, 'cantidad', $event)" /></label>
+                  <label><span class="sr-only">Precio unitario del producto {{ i + 1 }}</span><span class="money-input"><b>S/</b><input [name]="'precio-' + producto.id" type="number" min="0" step="0.01" [ngModel]="producto.precioUnitario" (ngModelChange)="actualizarProducto(producto.id, 'precioUnitario', $event)" /></span></label>
+                  <button type="button" [attr.aria-label]="'Quitar producto ' + (i + 1)" (click)="quitarProducto(producto.id)">×</button>
+                </div>
+              } @else {
+                <div><span><strong>{{ producto.nombre }}</strong><small>{{ producto.cantidad }} × {{ producto.precioUnitario | currency:'PEN':'S/ ':'1.2-2' }}</small></span><strong>{{ subtotalProducto(producto.cantidad, producto.precioUnitario) | currency:'PEN':'S/ ':'1.2-2' }}</strong></div>
+              }
+            }
+            @empty { <div class="no-products"><span>+</span><p>Aún no hay productos registrados.</p>@if (venta.estado === 'pendiente') { <button type="button" (click)="agregarProducto()">Agregar el primero</button> }</div> }
+          </div>
+        </section>
+        </div>
+
+        <footer class="checkout" [class.paid-sale]="venta.estado === 'pagada'">
+          @if (venta.estado === 'pendiente') { <label><span>Forma de pago</span><select [ngModel]="metodoPago()" (ngModelChange)="metodoPago.set($event)"><option value="efectivo">Efectivo</option><option value="yape">Yape</option><option value="transferencia">Transferencia</option></select></label> }
+          <div><span>Total final</span><strong>{{ totalVenta(venta) | currency:'PEN':'S/ ':'1.2-2' }}</strong></div>
+          <span class="checkout-actions">
+            @if (venta.estado === 'pendiente') {
+              <button class="button primary" type="button" (click)="guardarCambios()">Guardar</button>
+              <button class="mark-paid" type="button" [disabled]="totalVenta(venta) <= 0 || !metodoPago()" (click)="marcarComoPagado()">Marcar como pagado</button>
+            } @else {
+              <button class="modify-sale" type="button" (click)="modificarVenta()">Modificar</button>
+            }
+          </span>
+        </footer>
+      </section>
+      </div>
+    }
+  }
+</section>

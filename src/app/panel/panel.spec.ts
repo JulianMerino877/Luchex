@@ -38,13 +38,18 @@ describe('Panel navigation', () => {
   it('opens Clientes by default and renders each module through its route', async () => {
     const harness = await RouterTestingHarness.create('/panel');
     expect(TestBed.inject(Router).url).toBe('/panel/clientes');
-    for (const [path, label] of [
-      ['clientes', 'Clientes'], ['inventario', 'Inventario'], ['ordenes', 'Órdenes'],
-      ['ventas', 'Ventas'], ['caja', 'Caja'], ['mecanicos', 'Mecánicos'], ['reportes', 'Reportes'],
+    for (const [path, label, contenido] of [
+      ['clientes', 'Clientes', 'El módulo de Clientes está funcionando.'],
+      ['inventario', 'Inventario', 'CONTROL DE PRODUCTOS'],
+      ['ordenes', 'Órdenes', 'Órdenes de trabajo'],
+      ['ventas', 'Ventas', 'Registro de Ventas'],
+      ['caja', 'Caja', 'El módulo de Caja está funcionando.'],
+      ['mecanicos', 'Mecánicos', 'El módulo de Mecánicos está funcionando.'],
+      ['reportes', 'Reportes', 'El módulo de Reportes está funcionando.'],
     ]) {
       await harness.navigateByUrl(`/panel/${path}`);
       expect(harness.routeNativeElement?.querySelector('main')?.textContent)
-        .toContain(`El módulo de ${label} está funcionando.`);
+        .toContain(contenido);
       expect(harness.routeNativeElement?.querySelector('[aria-current="page"]')?.textContent)
         .toContain(label);
     }
