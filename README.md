@@ -32,7 +32,7 @@ npm run deploy  # ejecuta este en tu terminal
 git clone https://github.com/JulianMerino877/Luchex.git     # clonar repositorio
 ```
 
-## Se marroglaste la rama o lo jodiste como a tu ex Como ELIMINAR
+## Se marroglaste la rama regresa
 ### si aun no subiste al github o aun no enviaste a main usa este
 ```bash
 git switch main                    # Primero sales de la rama a rama principal(main)
