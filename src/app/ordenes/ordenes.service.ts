@@ -97,6 +97,7 @@ export class OrdenesService implements OnDestroy {
     return {
       folio: orden.folio,
       cliente: orden.cliente,
+      telefono: orden.telefono?.trim() ?? '',
       moto: orden.moto,
       estado: orden.estado,
       observaciones: orden.observaciones,
@@ -115,6 +116,7 @@ export class OrdenesService implements OnDestroy {
       id,
       folio: typeof datos['folio'] === 'string' ? datos['folio'] : '',
       cliente: typeof datos['cliente'] === 'string' ? datos['cliente'] : '',
+      telefono: typeof datos['telefono'] === 'string' ? datos['telefono'] : '',
       moto: typeof datos['moto'] === 'string' ? datos['moto'] : '',
       estado: ESTADOS.includes(datos['estado'] as EstadoOrden) ? datos['estado'] as EstadoOrden : 'pendiente',
       observaciones: typeof datos['observaciones'] === 'string' ? datos['observaciones'] : '',

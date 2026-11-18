@@ -60,7 +60,7 @@ export class Ordenes {
     const termino = this.busqueda().trim().toLocaleLowerCase('es');
     if (!termino) return this.ordenes();
     return this.ordenes().filter((orden) =>
-      [orden.moto, orden.cliente, orden.folio, this.folioVisible(orden.folio),
+      [orden.moto, orden.cliente, orden.telefono ?? '', orden.folio, this.folioVisible(orden.folio),
         ...orden.servicios.map((servicio) => servicio.nombre)]
         .some((valor) => valor.toLocaleLowerCase('es').includes(termino)),
     );
@@ -174,6 +174,7 @@ export class Ordenes {
     const limpia: OrdenTrabajo = {
       ...orden,
       cliente: orden.cliente.trim(),
+      telefono: orden.telefono?.trim() ?? '',
       moto: orden.moto.trim(),
       observaciones: orden.observaciones.trim(),
       manoObra: this.numeroPositivo(orden.manoObra),
@@ -339,6 +340,7 @@ export class Ordenes {
       id: this.crearId(),
       folio: `OT-${new Date().getFullYear()}-${String(siguiente).padStart(3, '0')}`,
       cliente: '',
+      telefono: '',
       moto: '',
       estado: 'pendiente',
       observaciones: '',

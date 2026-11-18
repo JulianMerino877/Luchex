@@ -87,11 +87,12 @@ service cloud.firestore {
             'manoObra', 'fecha', 'creado', 'creadoPor'
           ])
           && datos.keys().hasOnly([
-            'folio', 'cliente', 'moto', 'estado', 'observaciones', 'servicios',
+            'folio', 'cliente', 'telefono', 'moto', 'estado', 'observaciones', 'servicios',
             'manoObra', 'fecha', 'creado', 'creadoPor', 'actualizado', 'actualizadoPor'
           ])
           && datos.folio is string && datos.folio.size() > 0 && datos.folio.size() <= 30
           && datos.cliente is string && datos.cliente.size() > 0 && datos.cliente.size() <= 120
+          && (!datos.keys().hasAny(['telefono']) || (datos.telefono is string && datos.telefono.size() <= 20))
           && datos.moto is string && datos.moto.size() > 0 && datos.moto.size() <= 120
           && datos.estado in ['pendiente', 'proceso', 'listo', 'pagado']
           && datos.observaciones is string && datos.observaciones.size() <= 1000

@@ -133,6 +133,7 @@ tbody tr:hover { background: #fffaf7; }
 .field { display: grid; gap: 6px; margin-bottom: 12px; color: #48413b; font-size: 14px; font-weight: 700; }
 .form-body > .field:last-child { margin-bottom: 0; }
 .field b { color: #c14c2c; }
+.field em { color: #93877e; font-size: 11px; font-style: normal; font-weight: 400; }
 .field small { margin-top: -2px; color: #b4442f; font-size: 12px; font-weight: 400; }
 .input-wrap { display: flex; align-items: center; gap: 9px; height: 38px; padding: 0 10px; border: 1px solid #ddd5ce; border-radius: 8px; background: #fff; color: #8e8177; }
 .input-wrap:focus-within { border-color: #bd744b; box-shadow: 0 0 0 3px #c6502c10; }
