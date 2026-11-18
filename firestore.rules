@@ -16,9 +16,12 @@ service cloud.firestore {
             'nombre', 'especialidad', 'fechaIngreso', 'montoPago', 'fechaPago', 'creado', 'creadoPor'
           ])
           && datos.keys().hasOnly([
-            'nombre', 'especialidad', 'fechaIngreso', 'montoPago', 'fechaPago',
+            'nombre', 'celular', 'especialidad', 'fechaIngreso', 'montoPago', 'fechaPago', 'activo',
             'creado', 'creadoPor', 'actualizado', 'actualizadoPor'
           ])
+          // Los mecánicos registrados antes de estos campos no los tienen y se consideran activos.
+          && (!('activo' in datos) || datos.activo is bool)
+          && (!('celular' in datos) || (datos.celular is string && datos.celular.matches('9[0-9]{8}')))
           && datos.nombre is string && datos.nombre.size() <= 120
           && datos.nombre.matches('[\\s\\S]*\\S[\\s\\S]*')
           && datos.especialidad is string && datos.especialidad.size() <= 100

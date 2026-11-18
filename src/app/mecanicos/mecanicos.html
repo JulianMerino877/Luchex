@@ -1,1 +1,212 @@
-<p>El módulo de Mecánicos está funcionando.</p>
+<!-- ================================================================================
+     PANTALLA DE MECÁNICOS
+     1. Encabezado con el botón "Agregar mecánico"
+     2. Recuadro rojo de error (solo si falla algo)
+     3. Alertas de pago (solo si a alguien le toca cobrar)
+     4. Tabla de mecánicos con búsqueda y paginación
+     5. Formulario emergente para agregar / editar
+     ================================================================================ -->
+<section class="mechanics" aria-labelledby="mechanics-title">
+
+  <!-- 1. ENCABEZADO -->
+  <header class="page-header">
+    <div class="page-heading">
+      <span class="eyebrow">EQUIPO DEL TALLER</span>
+      <h1 id="mechanics-title">Mecánicos<span>.</span></h1>
+    </div>
+    <button class="button primary" type="button" (click)="abrir()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Agregar mecánico
+    </button>
+  </header>
+
+  <!-- 2. ERROR al registrar un pago o al activar/desactivar -->
+  @if (errorAccion()) {
+    <div class="notice failure" role="alert">
+      <span>{{ errorAccion() }}</span>
+      <button class="icon-button" type="button" aria-label="Cerrar error" (click)="errorAccion.set('')">×</button>
+    </div>
+  }
+
+  <!-- 3. ALERTAS DE PAGO: una por cada mecánico activo cuya fecha de pago ya llegó -->
+  @if (!servicio.cargando() && !servicio.error() && pagosPendientes().length) {
+    <section class="payments" aria-label="Pagos pendientes" role="status">
+      @for (mecanico of pagosPendientes(); track mecanico.id) {
+        <div class="pay-alert">
+          <span class="pay-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3.5v.5M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg></span>
+          <div class="pay-text">
+            <strong>Toca pagar a {{ mecanico.nombre }}</strong>
+            <span>{{ mecanico.montoPago | currency:'PEN':'S/ ':'1.2-2' }} · {{ atraso(mecanico.fechaPago) }} · Fecha de pago {{ formatearFecha(mecanico.fechaPago) }}</span>
+          </div>
+          <!-- Al pagar, la fecha avanza un mes y esta alerta desaparece -->
+          <button class="pay-button" type="button" [attr.aria-label]="'Registrar pago de ' + mecanico.nombre" [disabled]="!!pagando()" (click)="registrarPago(mecanico)">
+            @if (pagando() === mecanico.id) { <span class="spinner small-spinner" aria-hidden="true"></span> }
+            Registrar pago
+          </button>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- 4. TABLA DE MECÁNICOS -->
+  <div class="list-card">
+    <!-- Aviso verde flotante (desaparece a los 3 segundos) -->
+    @if (aviso()) {
+      <div class="toast" role="status">{{ aviso() }}</div>
+    }
+
+    <!-- Título con contadores + buscador -->
+    <div class="list-toolbar">
+      <div class="list-heading">
+        <span class="heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 6a6 6 0 0 0-7 8l-5 5a2 2 0 0 0 3 3l5-5a6 6 0 0 0 8-7l-4 4-4-4 4-4Z" /></svg></span>
+        <div>
+          <h2>Plantilla de mecánicos</h2>
+          <div class="chips">
+            <span class="chip">{{ servicio.mecanicos().length }} {{ servicio.mecanicos().length === 1 ? 'registrado' : 'registrados' }}</span>
+            <span class="chip chip-active"><span class="dot" aria-hidden="true"></span>{{ activos() }} {{ activos() === 1 ? 'activo' : 'activos' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+        <input #buscador type="search" aria-label="Buscar mecánicos por nombre, celular o especialidad" placeholder="Buscar nombre, celular o especialidad…" [value]="busqueda()" (input)="buscar(buscador.value)" />
+        @if (busqueda()) {
+          <button class="icon-button" type="button" aria-label="Limpiar búsqueda" (click)="buscar(''); buscador.focus()">×</button>
+        }
+      </div>
+    </div>
+
+    <!-- Según el estado se muestra: cargando, error, tabla, "sin resultados" o "vacío" -->
+    @if (servicio.cargando()) {
+      <div class="empty-state" role="status"><span class="spinner" aria-hidden="true"></span><h3>Cargando mecánicos…</h3></div>
+    } @else if (servicio.error()) {
+      <div class="empty-state">
+        <span class="state-icon" aria-hidden="true">!</span>
+        <h3>No pudimos cargar a los mecánicos</h3><p role="alert">{{ servicio.error() }}</p>
+        <button class="button secondary" type="button" (click)="servicio.cargar()">Volver a intentar</button>
+      </div>
+    } @else if (resultados().length) {
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">Mecánicos registrados en el taller</caption>
+          <thead><tr><th scope="col">MECÁNICO</th><th scope="col">CELULAR</th><th scope="col">ESPECIALIDAD</th><th scope="col">INGRESO</th><th scope="col">PAGO</th><th scope="col">FECHA DE PAGO</th><th scope="col">EDITAR</th><th scope="col">ESTADO</th></tr></thead>
+          <tbody>
+            <!-- Solo se pintan los 5 mecánicos de la página actual -->
+            @for (mecanico of visibles(); track mecanico.id) {
+              <tr [class.inactive]="!mecanico.activo">
+                <td data-label="Mecánico"><span class="person"><span class="avatar" aria-hidden="true">{{ mecanico.nombre.charAt(0) }}</span><strong>{{ mecanico.nombre }}</strong></span></td>
+                <td data-label="Celular" class="phone">{{ formatearCelular(mecanico.celular) }}</td>
+                <td data-label="Especialidad"><span class="tag">{{ mecanico.especialidad }}</span></td>
+                <td data-label="Ingreso" class="date">{{ formatearFecha(mecanico.fechaIngreso) }}</td>
+                <td data-label="Pago"><strong class="amount">{{ mecanico.montoPago | currency:'PEN':'S/ ':'1.2-2' }}</strong></td>
+                <!-- La fecha se pinta de amarillo si ya toca pagar -->
+                <td data-label="Fecha pago" class="date" [class.due]="mecanico.activo && mecanico.fechaPago <= fechaHoy">{{ formatearFecha(mecanico.fechaPago) }}</td>
+                <td data-label="Editar">
+                  <button type="button" class="edit-button" title="Editar mecánico" [attr.aria-label]="'Editar ' + mecanico.nombre" (click)="editar(mecanico)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6a2 2 0 0 0-2.8-2.8L5.4 16.2 4 20Zm10.5-12.9 2.8 2.8" /></svg></button>
+                </td>
+                <!-- Interruptor Activo / Inactivo -->
+                <td data-label="Estado">
+                  <button type="button" class="switch" role="switch" [attr.aria-checked]="mecanico.activo" [attr.aria-label]="(mecanico.activo ? 'Desactivar ' : 'Activar ') + mecanico.nombre" [disabled]="!!cambiandoEstado()" (click)="cambiarEstado(mecanico)">
+                    <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+                    <span class="switch-label">{{ mecanico.activo ? 'Activo' : 'Inactivo' }}</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <!-- Pie de la tabla: conteo y flechas ‹ › para cambiar de página -->
+      <footer class="table-footer">
+        <span role="status">Mostrando {{ primerResultado() }}{{ ultimoResultado() > primerResultado() ? '–' + ultimoResultado() : '' }} de {{ resultados().length }} {{ resultados().length === 1 ? 'mecánico' : 'mecánicos' }}</span>
+        <nav class="pagination" aria-label="Paginación de mecánicos">
+          <button type="button" aria-label="Página anterior" title="Página anterior" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)">‹</button>
+          <span class="current-page" aria-current="page" [attr.aria-label]="'Página ' + paginaActual() + ' de ' + totalPaginas()">{{ paginaActual() }}</span>
+          <button type="button" aria-label="Página siguiente" title="Página siguiente" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)">›</button>
+        </nav>
+      </footer>
+    } @else if (busqueda().trim()) {
+      <div class="empty-state"><span class="state-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg></span><h3>No encontramos a ese mecánico</h3><p>Prueba con otro nombre, celular o especialidad.</p><button class="button secondary" type="button" (click)="buscar('')">Ver todos los mecánicos</button></div>
+    } @else {
+      <div class="empty-state">
+        <span class="state-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 6a6 6 0 0 0-7 8l-5 5a2 2 0 0 0 3 3l5-5a6 6 0 0 0 8-7l-4 4-4-4 4-4Z" /></svg></span>
+        <h3>Aún no hay mecánicos registrados</h3><p>Agrega a tu primer mecánico con su especialidad y su pago.</p>
+        <button class="button secondary" type="button" (click)="abrir()">Agregar mi primer mecánico</button>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- 5. FORMULARIO EMERGENTE (agregar / editar) -->
+<dialog #dialogo class="mechanic-dialog" aria-labelledby="dialog-title" (cancel)="cerrar($event)">
+  <div class="dialog-header">
+    <div><span class="eyebrow">{{ editando() ? 'EDITAR REGISTRO' : 'NUEVO REGISTRO' }}</span><h2 id="dialog-title">{{ editando() ? 'Editar mecánico' : 'Agregar mecánico' }}</h2></div>
+    <button class="icon-button close-dialog" type="button" aria-label="Cerrar formulario" [disabled]="guardando()" (click)="cerrar()">×</button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate [attr.aria-busy]="guardando()">
+    <!-- Nombre: solo letras; al salir del campo se ordena con mayúsculas -->
+    <div class="field">
+      <label for="mechanic-name">Nombre y apellido <span class="required">*</span></label>
+      <input #nombreInput id="mechanic-name" type="text" formControlName="nombre" placeholder="Ej. Juan Pérez" autocomplete="off" maxlength="120" [attr.aria-invalid]="invalido('nombre')" (input)="filtrarNombre(nombreInput)" (blur)="ordenarNombre()" />
+      @if (invalido('nombre')) { <small class="field-error" role="alert">Escribe nombre y apellido, solo con letras.</small> }
+    </div>
+    <div class="field-row">
+      <!-- Celular: solo números, máximo 9 -->
+      <div class="field">
+        <label for="mechanic-phone">Celular <span class="required">*</span></label>
+        <input #celularInput id="mechanic-phone" type="tel" formControlName="celular" placeholder="Ej. 987654321" autocomplete="off" inputmode="numeric" maxlength="9" [attr.aria-invalid]="invalido('celular')" (input)="filtrarCelular(celularInput)" />
+        @if (invalido('celular')) { <small class="field-error" role="alert">Debe tener 9 dígitos y empezar con 9.</small> }
+      </div>
+      <!-- Especialidad: letras, espacios y comas -->
+      <div class="field">
+        <label for="mechanic-specialty">Especialidad <span class="required">*</span></label>
+        <input #especialidadInput id="mechanic-specialty" type="text" formControlName="especialidad" placeholder="Ej. Motor, frenos" autocomplete="off" maxlength="100" [attr.aria-invalid]="invalido('especialidad')" (input)="filtrarEspecialidad(especialidadInput)" (blur)="ordenarEspecialidad()" />
+        @if (invalido('especialidad')) { <small class="field-error" role="alert">Escribe al menos 3 letras (sin números).</small> }
+      </div>
+    </div>
+    <div class="field-row">
+      <!-- Fecha de ingreso: no puede ser futura -->
+      <div class="field">
+        <label for="mechanic-start">Fecha de ingreso <span class="required">*</span></label>
+        <input id="mechanic-start" type="date" formControlName="fechaIngreso" min="1900-01-01" [max]="fechaHoy" [attr.aria-invalid]="invalido('fechaIngreso')" />
+        @if (form.controls.fechaIngreso.touched && form.controls.fechaIngreso.hasError('futuro')) {
+          <small class="field-error" role="alert">No puede ser una fecha futura.</small>
+        } @else if (invalido('fechaIngreso')) {
+          <small class="field-error" role="alert">Elige una fecha válida.</small>
+        }
+      </div>
+      <!-- Fecha de pago: no puede ser antes del ingreso -->
+      <div class="field">
+        <label for="mechanic-pay-date">Fecha de pago <span class="required">*</span></label>
+        <input id="mechanic-pay-date" type="date" formControlName="fechaPago" min="1900-01-01" max="2099-12-31" [attr.aria-invalid]="invalido('fechaPago') || (form.controls.fechaPago.touched && form.hasError('pagoAntesDeIngreso'))" />
+        @if (invalido('fechaPago')) {
+          <small class="field-error" role="alert">Elige una fecha válida.</small>
+        } @else if (form.controls.fechaPago.touched && form.hasError('pagoAntesDeIngreso')) {
+          <small class="field-error" role="alert">No puede ser anterior a la fecha de ingreso.</small>
+        }
+      </div>
+    </div>
+    <!-- Monto: mayor a 0, con máximo 2 decimales -->
+    <div class="field">
+      <label for="mechanic-amount">Monto de pago mensual <span class="required">*</span></label>
+      <span class="price-input"><span>S/</span><input id="mechanic-amount" type="number" formControlName="montoPago" min="0.01" max="999999.99" step="0.01" inputmode="decimal" placeholder="0.00" [attr.aria-invalid]="invalido('montoPago')" (keydown)="bloquearTeclasMonto($event)" /></span>
+      @if (form.controls.montoPago.touched && form.controls.montoPago.hasError('decimales')) {
+        <small class="field-error" role="alert">Usa máximo 2 decimales (ej. 1200.50).</small>
+      } @else if (invalido('montoPago')) {
+        <small class="field-error" role="alert">Ingresa un monto mayor a 0 y hasta 999999.99.</small>
+      }
+    </div>
+
+    <!-- Error al guardar (por ejemplo, sin conexión) -->
+    @if (error()) { <p class="notice failure" role="alert">{{ error() }}</p> }
+
+    <div class="dialog-actions">
+      <button class="button secondary" type="button" [disabled]="guardando()" (click)="cerrar()">Cancelar</button>
+      <button class="button primary" type="submit" [disabled]="guardando()">
+        @if (guardando()) { <span class="spinner small-spinner" aria-hidden="true"></span> }
+        {{ guardando() ? 'Guardando…' : editando() ? 'Guardar cambios' : 'Guardar mecánico' }}
+      </button>
+    </div>
+  </form>
+</dialog>
