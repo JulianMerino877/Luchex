@@ -1,6 +1,15 @@
+<!-- ================================================================================
+     PANTALLA DE ÓRDENES DE TRABAJO (mismo diseño que Mecánicos)
+     1. Encabezado   2. Error   3. Tabla con filtros y paginación   4. Formulario
+     ================================================================================ -->
 <section class="orders" aria-labelledby="orders-title">
+
+  <!-- 1. ENCABEZADO -->
   <header class="page-header">
-    <div class="page-heading"><h1 id="orders-title">Órdenes de trabajo</h1></div>
+    <div class="page-heading">
+      <span class="eyebrow">TRABAJOS DEL TALLER</span>
+      <h1 id="orders-title">Órdenes de trabajo<span>.</span></h1>
+    </div>
     <div class="header-actions">
       <button class="button primary" type="button" (click)="abrirNueva()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
@@ -9,21 +18,49 @@
     </div>
   </header>
 
-  @if (aviso()) {
-    <div class="notice" [class.fading]="avisoDesvaneciendo()" role="status">
-      <span>{{ aviso() }}</span>
-      <button type="button" aria-label="Cerrar mensaje" (click)="ocultarAviso()">×</button>
+  <!-- 2. ERROR (guardar, cambiar estado, exportar…) -->
+  @if (errorAccion()) {
+    <div class="notice failure" role="alert">
+      <span>{{ errorAccion() }}</span>
+      <button type="button" aria-label="Cerrar error" (click)="errorAccion.set('')">×</button>
     </div>
   }
 
+  <!-- 3. TABLA DE ÓRDENES -->
   <div class="orders-panel">
+    <!-- Aviso verde flotante (desaparece a los 3 segundos) -->
+    @if (aviso()) {
+      <div class="toast" role="status">{{ aviso() }}</div>
+    }
+
+    <!-- Título con contadores + buscador -->
     <div class="toolbar">
+      <div class="list-heading">
+        <span class="heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2h6v2M9 10h6m-6 4h6" /></svg></span>
+        <div>
+          <h2>Listado de órdenes</h2>
+          <div class="chips">
+            <span class="chip">{{ ordenes().length }} {{ ordenes().length === 1 ? 'orden' : 'órdenes' }}</span>
+            <span class="chip chip-active"><span class="dot" aria-hidden="true"></span>{{ ordenesPorEstado('listo').length }} listas para cobrar</span>
+          </div>
+        </div>
+      </div>
       <label class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
         <span class="sr-only">Buscar órdenes</span>
         <input #buscar type="search" placeholder="Buscar orden, cliente, moto o servicio…" [value]="busqueda()" (input)="buscarOrdenes(buscar.value)" />
         @if (busqueda()) { <button type="button" aria-label="Limpiar búsqueda" (click)="buscarOrdenes(''); buscar.focus()">×</button> }
       </label>
+    </div>
+
+    <!-- Filtros por estado + Excel + orden por fecha -->
+    <div class="filters-bar">
+    <nav class="status-filters" aria-label="Filtrar órdenes por estado">
+      <button type="button" [class.active]="estadoFiltro() === 'todas'" [attr.aria-pressed]="estadoFiltro() === 'todas'" (click)="filtrarEstado('todas')">Todas <span>{{ ordenesFiltradas().length }}</span></button>
+      @for (columna of columnas; track columna.estado) {
+        <button type="button" [class.active]="estadoFiltro() === columna.estado" [attr.aria-pressed]="estadoFiltro() === columna.estado" (click)="filtrarEstado(columna.estado)">{{ columna.titulo }} <span>{{ ordenesPorEstado(columna.estado).length }}</span></button>
+      }
+    </nav>
       <div class="toolbar-actions">
         <button class="button excel-button" type="button" [disabled]="exportandoExcel()" (click)="descargarExcel()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6V3Zm9 0v5h4M9 12l5 6m0-6-5 6" /></svg>
@@ -40,16 +77,10 @@
       </div>
     </div>
 
-    <nav class="status-filters" aria-label="Filtrar órdenes por estado">
-      <button type="button" [class.active]="estadoFiltro() === 'todas'" [attr.aria-pressed]="estadoFiltro() === 'todas'" (click)="filtrarEstado('todas')">Todas <span>{{ ordenesFiltradas().length }}</span></button>
-      @for (columna of columnas; track columna.estado) {
-        <button type="button" [class.active]="estadoFiltro() === columna.estado" [attr.aria-pressed]="estadoFiltro() === columna.estado" (click)="filtrarEstado(columna.estado)">{{ columna.titulo }} <span>{{ ordenesPorEstado(columna.estado).length }}</span></button>
-      }
-    </nav>
-
+    <!-- Tabla (solo las 5 órdenes de la página actual) -->
     <div class="table-scroll" role="region" aria-label="Listado de órdenes de trabajo" tabindex="0">
       <table>
-        <thead><tr><th scope="col">Orden</th><th scope="col">Cliente</th><th scope="col">Moto</th><th scope="col" class="status-column">Estado</th><th scope="col">Fecha</th><th scope="col" class="actions-column">Acciones</th></tr></thead>
+        <thead><tr><th scope="col">ORDEN</th><th scope="col">CLIENTE</th><th scope="col">MOTO</th><th scope="col" class="status-column">ESTADO</th><th scope="col">FECHA</th><th scope="col" class="actions-column">ACCIONES</th></tr></thead>
         <tbody>
           @for (orden of ordenesPagina(); track orden.id) {
             <tr>
@@ -90,6 +121,7 @@
       </table>
     </div>
 
+    <!-- Pie de la tabla: conteo y flechas ‹ › -->
     <footer class="table-footer">
       <span role="status">Mostrando {{ primerResultado() }}{{ ultimoResultado() > primerResultado() ? '–' + ultimoResultado() : '' }} de {{ ordenesVisibles().length }} {{ ordenesVisibles().length === 1 ? 'orden' : 'órdenes' }}</span>
       <nav class="pagination" aria-label="Paginación de órdenes">
@@ -101,6 +133,7 @@
   </div>
 </section>
 
+<!-- 4. FORMULARIO EMERGENTE (nueva orden / editar con servicios y totales) -->
 <dialog #dialogo class="order-dialog" aria-labelledby="dialog-title" (cancel)="cerrar($event)">
   <form (ngSubmit)="guardar()" novalidate>
     <header class="dialog-header">

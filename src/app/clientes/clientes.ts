@@ -66,6 +66,7 @@ export class Clientes {
   protected readonly cargando = this.data.cargandoOrdenes;
   protected readonly error = this.data.errorOrdenes;
   protected readonly clientes = computed(() => agruparClientes(this.data.ordenes()));
+  /** Clientes que coinciden con la búsqueda (nombre, teléfono o moto, sin importar tildes). */
   protected readonly clientesVisibles = computed(() => {
     const termino = normalizar(this.busqueda());
     if (!termino) return this.clientes();
@@ -73,4 +74,31 @@ export class Clientes {
       [cliente.nombre, cliente.telefono, ...cliente.motos].some(valor => normalizar(valor).includes(termino)),
     );
   });
+
+  // ---------------------------------------------------------------------------------
+  // Paginación (igual que en Mecánicos): 5 clientes por página con flechas ‹ ›
+  // ---------------------------------------------------------------------------------
+  protected readonly porPagina = 5;
+  protected readonly pagina = signal(1);
+  protected readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.clientesVisibles().length / this.porPagina)));
+  /** Evita quedar en una página que ya no existe (por ejemplo, después de buscar). */
+  protected readonly paginaActual = computed(() => Math.min(this.pagina(), this.totalPaginas()));
+  /** Los clientes de la página actual. */
+  protected readonly clientesPagina = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.porPagina;
+    return this.clientesVisibles().slice(inicio, inicio + this.porPagina);
+  });
+  /** Números para el texto "Mostrando 1–5 de 12 clientes". */
+  protected readonly primerResultado = computed(() =>
+    this.clientesVisibles().length ? (this.paginaActual() - 1) * this.porPagina + 1 : 0);
+  protected readonly ultimoResultado = computed(() =>
+    Math.min(this.paginaActual() * this.porPagina, this.clientesVisibles().length));
+  /** Clientes con teléfono registrado (para la etiqueta del título). */
+  protected readonly conTelefono = computed(() => this.clientes().filter(cliente => cliente.telefono).length);
+
+  /** Cambia la búsqueda y vuelve a la página 1. */
+  protected buscar(texto: string): void {
+    this.busqueda.set(texto);
+    this.pagina.set(1);
+  }
 }

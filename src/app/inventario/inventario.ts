@@ -16,19 +16,46 @@ export class Inventario implements OnDestroy {
   protected readonly productos = inject(ProductosService);
   protected readonly busqueda = signal('');
   protected readonly resultados = computed(() => filtrarProductos(this.productos.productos(), this.busqueda()));
+  /** Productos con stock mayor a 0 (para la etiqueta verde del título). */
+  protected readonly conStock = computed(() => this.productos.productos().filter(producto => producto.total > 0).length);
+
+  // ---------------------------------------------------------------------------------
+  // Paginación (igual que en Mecánicos): 5 productos por página con flechas ‹ ›
+  // ---------------------------------------------------------------------------------
+  protected readonly porPagina = 5;
+  protected readonly pagina = signal(1);
+  protected readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.resultados().length / this.porPagina)));
+  /** Evita quedar en una página que ya no existe (por ejemplo, después de buscar o eliminar). */
+  protected readonly paginaActual = computed(() => Math.min(this.pagina(), this.totalPaginas()));
+  /** Los productos de la página actual. */
+  protected readonly productosPagina = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.porPagina;
+    return this.resultados().slice(inicio, inicio + this.porPagina);
+  });
+  /** Números para el texto "Mostrando 1–5 de 12 productos". */
+  protected readonly primerResultado = computed(() =>
+    this.resultados().length ? (this.paginaActual() - 1) * this.porPagina + 1 : 0);
+  protected readonly ultimoResultado = computed(() =>
+    Math.min(this.paginaActual() * this.porPagina, this.resultados().length));
+
   protected readonly abierto = signal(false);
   protected readonly escaneando = signal(false);
   protected readonly escaneado = signal(false);
   protected readonly guardando = signal(false);
   protected readonly error = signal('');
-  protected readonly errorAccion = signal('');
-  protected readonly aviso = signal('');
-  protected readonly avisoFlotante = signal('');
+  protected readonly errorAccion = signal('');      // Error al eliminar (recuadro rojo arriba)
+  protected readonly aviso = signal('');            // Mensaje verde flotante sobre la tabla (3 s)
   protected readonly editando = signal<Producto | null>(null);
   protected readonly eliminando = signal('');
   private temporizadorAviso?: number;
   ngOnDestroy(): void {
     if (this.temporizadorAviso !== undefined) window.clearTimeout(this.temporizadorAviso);
+  }
+
+  /** Cambia la búsqueda y vuelve a la página 1. */
+  protected buscar(texto: string): void {
+    this.busqueda.set(texto);
+    this.pagina.set(1);
   }
   protected readonly form = new FormBuilder().nonNullable.group({
     codigo: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(4096)]],
@@ -41,7 +68,6 @@ export class Inventario implements OnDestroy {
     this.editando.set(null);
     this.error.set('');
     this.errorAccion.set('');
-    this.aviso.set('');
     this.escaneado.set(false);
     this.abierto.set(true);
     this.escaneando.set(true);
@@ -53,7 +79,6 @@ export class Inventario implements OnDestroy {
     this.editando.set(producto);
     this.error.set('');
     this.errorAccion.set('');
-    this.aviso.set('');
     this.escaneado.set(false);
     this.escaneando.set(false);
     this.abierto.set(true);
@@ -73,10 +98,9 @@ export class Inventario implements OnDestroy {
     if (this.eliminando()) return;
     this.eliminando.set(producto.id);
     this.errorAccion.set('');
-    this.aviso.set('');
     try {
       await this.productos.eliminar(producto.id);
-      this.mostrarAvisoFlotante(`Producto "${producto.nombre || producto.codigo.trim()}" eliminado correctamente.`);
+      this.mostrarAviso(`Producto "${producto.nombre || producto.codigo.trim()}" eliminado correctamente.`);
     } catch (error) {
       this.errorAccion.set(this.productos.mensajeError(error));
     } finally {
@@ -84,11 +108,12 @@ export class Inventario implements OnDestroy {
     }
   }
 
-  private mostrarAvisoFlotante(mensaje: string): void {
+  /** Muestra el aviso verde flotante sobre la tabla y lo oculta a los 3 segundos (igual que Mecánicos). */
+  private mostrarAviso(mensaje: string): void {
     if (this.temporizadorAviso !== undefined) window.clearTimeout(this.temporizadorAviso);
-    this.avisoFlotante.set(mensaje);
+    this.aviso.set(mensaje);
     this.temporizadorAviso = window.setTimeout(() => {
-      this.avisoFlotante.set('');
+      this.aviso.set('');
       this.temporizadorAviso = undefined;
     }, 3000);
   }
@@ -125,8 +150,8 @@ export class Inventario implements OnDestroy {
       }
       this.guardando.set(false);
       this.cerrar();
-      this.busqueda.set('');
-      this.aviso.set(`Producto ${codigo.trim()} ${productoEditado ? 'actualizado' : 'agregado'} en el inventario.`);
+      this.buscar('');
+      this.mostrarAviso(`Producto ${codigo.trim()} ${productoEditado ? 'actualizado' : 'agregado'} en el inventario.`);
     } catch (error) {
       this.error.set(this.productos.mensajeError(error));
     } finally {

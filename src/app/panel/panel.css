@@ -96,14 +96,24 @@ a:focus-visible, button:focus-visible { outline: 2px solid #f6b581; outline-offs
 .collapsed .account-area { padding: 16px 12px; }
 .collapsed .account { justify-content: center; padding: 8px 0; border: 0; background: transparent; }
 
-@media (max-width: 700px) {
+/* Laptops pequeñas y tablets: menú un poco más angosto */
+@media (max-width: 1050px) {
   .system-layout { grid-template-columns: 220px minmax(0, 1fr); }
   .collapsed { grid-template-columns: 72px minmax(0, 1fr); }
-  nav { padding: 0 12px 16px; }
-  .module-link { padding: 10px 12px; }
-  .account-area { padding: 16px 10px; }
-  .account { gap: 8px; padding: 10px 8px; }
-  .avatar { display: none; }
-  .panel-content { padding: 24px 16px; }
-  .brand img { height: 100px; }
+  .brand img { width: 90px; height: 72px; }
+  .panel-content { padding: 16px; }
+}
+
+/* Celulares: el menú siempre muestra solo íconos para dejar espacio al módulo */
+@media (max-width: 700px) {
+  .system-layout, .collapsed { grid-template-columns: 60px minmax(0, 1fr); }
+  .brand { padding: 10px 4px; }
+  .brand img { width: 44px; height: 44px; }
+  .brand span, .module-label, .account-label, .avatar, .menu-toolbar { display: none; }
+  nav { gap: 6px; padding: 8px 6px 16px; }
+  .module-link { justify-content: center; min-height: 44px; padding: 10px; }
+  .account-area { padding: 12px 6px; }
+  .account { justify-content: center; padding: 6px 0; border: 0; background: transparent; }
+  .error-message { display: none; }
+  .panel-content { padding: 14px 10px; }
 }

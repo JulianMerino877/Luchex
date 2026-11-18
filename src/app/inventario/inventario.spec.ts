@@ -80,18 +80,23 @@ describe('Inventario', () => {
     expect(fixture.nativeElement.textContent).toContain('No encontramos ese producto');
   });
 
-  it('completa el código desde el QR y permite guardar sin nombre', async () => {
+  it('completa el código desde el QR, permite guardar sin nombre y muestra el aviso flotante 3 segundos', fakeAsync(() => {
     abrir();
     const scanner: ScannerDoble = fixture.debugElement.query(By.directive(ScannerDoble)).componentInstance;
     scanner.codigoDetectado.emit('QR-123/ABC');
     fixture.detectChanges();
     expect(scanner.detener).toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector('#product-code').value).toBe('QR-123/ABC');
-    await guardar();
+    fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    tick();
+    fixture.detectChanges();
     expect(servicio.agregar).toHaveBeenCalledOnceWith('QR-123/ABC', '', 1);
     expect(fixture.nativeElement.querySelector('dialog').open).toBeFalse();
-    expect(fixture.nativeElement.querySelector('.success').textContent).toContain('QR-123/ABC');
-  });
+    expect(fixture.nativeElement.querySelector('.list-card .toast').textContent).toContain('QR-123/ABC');
+    tick(3000);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.toast')).toBeNull();
+  }));
 
   it('rechaza códigos vacíos, con solo espacios o demasiado largos', async () => {
     abrir();
@@ -166,10 +171,10 @@ describe('Inventario', () => {
     tick();
     fixture.detectChanges();
     expect(servicio.eliminar).toHaveBeenCalledOnceWith('1');
-    expect(fixture.nativeElement.querySelector('.product-toast').textContent).toContain('Producto "Pastillas de freno" eliminado correctamente');
+    expect(fixture.nativeElement.querySelector('.toast').textContent).toContain('Producto "Pastillas de freno" eliminado correctamente');
     tick(3000);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.product-toast')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.toast')).toBeNull();
   }));
 
   it('muestra los errores de lectura y permite reintentar', () => {

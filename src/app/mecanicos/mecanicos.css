@@ -55,7 +55,9 @@ h2 { margin: 0 0 5px; font-size: 18px; letter-spacing: -.2px; }
 .search:focus-within { border-color: #be754a; }
 .search input { width: 100%; min-width: 0; border: 0; background: transparent; outline: none; color: #3b332c; font-size: 15px; }
 .search input::-webkit-search-cancel-button { display: none; }
-table { width: 100%; border-collapse: collapse; text-align: left; table-layout: fixed; }
+/* En laptops pequeñas y tablets la tabla se desliza de lado en vez de apretarse */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; min-width: 900px; border-collapse: collapse; text-align: left; table-layout: fixed; }
 th { padding: 11px 14px; background: #f7f4ef; border-block: 1px solid #eee6dc; color: #6f6357; font-size: 13px; font-weight: 700; letter-spacing: .4px; }
 th:first-child { width: 20%; }
 th:nth-child(2) { width: 13%; }
@@ -131,7 +133,11 @@ small { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; }
   .page-header { align-items: flex-start; flex-direction: column; gap: 12px; }
   .pay-alert { flex-wrap: wrap; }
   .pay-button { width: 100%; justify-content: center; }
-  .table-wrap { padding: 0 12px; }
+  .page-header .button { width: 100%; }
+  .table-wrap { padding: 0 12px; overflow: visible; }
+  table { min-width: 0; }
+  tbody tr:first-child { border-top: 0; }
+  .toast { bottom: 90px; }
   thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   table, tbody { display: block; }
   tr { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid #eee6dc; }

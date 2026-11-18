@@ -1,17 +1,30 @@
+<!-- ================================================================================
+     PANTALLA DE VENTAS (mismo diseño que Mecánicos)
+     1. Encabezado   2. Error   3. Nueva venta directa   4. Tabla   5. Gestionar venta
+     ================================================================================ -->
 <section class="sales" aria-labelledby="sales-title">
+
+  <!-- 1. ENCABEZADO -->
   <header class="page-header">
-    <div class="page-heading"><h1 id="sales-title">Ventas</h1></div>
-    <time>{{ fechaActual }}</time>
+    <div class="page-heading">
+      <span class="eyebrow">CAJA Y COBROS</span>
+      <h1 id="sales-title">Ventas<span>.</span></h1>
+    </div>
+    <button class="button primary" type="button" (click)="creandoVenta.set(true)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Nueva venta
+    </button>
   </header>
 
-  <section class="metrics" aria-label="Resumen de ventas">
-    <article class="today"><strong>{{ recaudadoHoy() | currency:'PEN':'S/ ':'1.2-2' }}</strong><span>Recaudado hoy</span></article>
-    <article class="month"><strong>{{ recaudadoMes() | currency:'PEN':'S/ ':'1.2-2' }}</strong><span>Recaudado este mes</span></article>
-    <article class="count"><strong>{{ cantidadMes() }}</strong><span>Ventas del mes</span></article>
-  </section>
+  <!-- 2. ERROR (falta el cliente, no se pudo cobrar…) -->
+  @if (errorAccion()) {
+    <div class="notice failure" role="alert">
+      <span>{{ errorAccion() }}</span>
+      <button type="button" aria-label="Cerrar error" (click)="errorAccion.set('')">×</button>
+    </div>
+  }
 
-  @if (aviso()) { <div class="notice" role="status">{{ aviso() }}</div> }
-
+  <!-- 3. NUEVA VENTA DIRECTA (sin orden de trabajo) -->
   @if (creandoVenta()) {
     <form class="direct-sale" (ngSubmit)="crearVentaDirecta()">
       <div class="direct-sale-title"><strong>Nueva venta</strong></div>
@@ -20,31 +33,46 @@
     </form>
   }
 
+  <!-- 4. TABLA DE VENTAS -->
   <section class="registry" aria-labelledby="registry-title">
+    <!-- Aviso verde flotante (desaparece a los 3 segundos) -->
+    @if (aviso()) {
+      <div class="toast" role="status">{{ aviso() }}</div>
+    }
+
+    <!-- Título con contadores + buscador -->
     <header class="registry-header">
-      <h2 id="registry-title">Registro de Ventas</h2>
-      <button class="button primary new-sale" type="button" (click)="creandoVenta.set(true)"><span>+</span> Nueva venta</button>
+      <div class="list-heading">
+        <span class="heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4V7Zm0 4h16M16 15h1M7 7l2-3h6l2 3" /></svg></span>
+        <div>
+          <h2 id="registry-title">Registro de Ventas</h2>
+          <div class="chips">
+            <span class="chip">{{ ventas().length }} {{ ventas().length === 1 ? 'venta' : 'ventas' }}</span>
+            <span class="chip chip-pending"><span class="dot" aria-hidden="true"></span>{{ pendientes() }} por cobrar</span>
+          </div>
+        </div>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+        <span class="sr-only">Buscar ventas</span>
+        <input #buscador type="search" placeholder="Buscar cliente, producto o forma de pago…" [value]="busqueda()" (input)="buscar(buscador.value)" />
+        @if (busqueda()) { <button type="button" aria-label="Limpiar búsqueda" (click)="buscar(''); buscador.focus()">×</button> }
+      </label>
     </header>
 
-    <label class="search">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
-      <span class="sr-only">Buscar ventas</span>
-      <input #buscar type="search" placeholder="Buscar por cliente, producto, servicio o forma de pago..." [value]="busqueda()" (input)="busqueda.set(buscar.value)" />
-      @if (busqueda()) { <button type="button" aria-label="Limpiar búsqueda" (click)="busqueda.set(''); buscar.focus()">×</button> }
-    </label>
-
+    <!-- Tabla (solo las 5 ventas de la página actual) -->
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Cliente</th><th>Servicio / Producto</th><th>Forma de pago</th><th>Total</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <thead><tr><th scope="col">CLIENTE</th><th scope="col">SERVICIO / PRODUCTO</th><th scope="col">FORMA DE PAGO</th><th scope="col">TOTAL</th><th scope="col">FECHA</th><th scope="col">GESTIONAR</th></tr></thead>
         <tbody>
-          @for (venta of ventasFiltradas(); track venta.id) {
+          @for (venta of ventasPagina(); track venta.id) {
             <tr [class.selected]="seleccionadaId() === venta.id">
-              <td data-label="Cliente"><strong>{{ clienteDe(venta) }}</strong><small>{{ venta.folio }}</small></td>
-              <td data-label="Servicio / Producto"><span class="content-type" [class.mixed]="venta.ordenId && venta.productos.length">{{ tipoContenidoDe(venta) }}</span></td>
-              <td data-label="Forma de pago"><span class="payment" [attr.data-method]="venta.estado === 'pagada' ? (venta.metodoPago || 'pendiente') : 'pendiente'">{{ nombreMetodo(venta) }}</span></td>
+              <td data-label="Cliente"><span class="client"><strong>{{ clienteDe(venta) }}</strong><small>{{ venta.folio }}</small></span></td>
+              <td data-label="Contenido"><span class="content-type" [class.mixed]="venta.ordenId && venta.productos.length">{{ tipoContenidoDe(venta) }}</span></td>
+              <td data-label="Pago"><span class="payment" [attr.data-method]="venta.estado === 'pagada' ? (venta.metodoPago || 'pendiente') : 'pendiente'">{{ nombreMetodo(venta) }}</span></td>
               <td data-label="Total" class="amount">{{ totalVenta(venta) | currency:'PEN':'S/ ':'1.2-2' }}</td>
-              <td data-label="Fecha">{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td data-label="Acciones" class="actions"><button type="button" title="Gestionar venta" [attr.aria-label]="'Gestionar ' + venta.folio" (click)="seleccionar(venta)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 11-11a2 2 0 0 0-3-3L5 16l-1 4Zm11-13 3 3" /></svg></button></td>
+              <td data-label="Fecha" class="date">{{ venta.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td data-label="Gestionar" class="actions"><button type="button" class="edit-button" title="Gestionar venta" [attr.aria-label]="'Gestionar ' + venta.folio" (click)="seleccionar(venta)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 11-11a2 2 0 0 0-3-3L5 16l-1 4Zm11-13 3 3" /></svg></button></td>
             </tr>
           } @empty {
             <tr class="empty-row"><td colspan="6"><strong>No se encontraron ventas</strong><span>{{ busqueda() ? 'Prueba con otra búsqueda.' : 'Envía una orden lista o crea una venta directa.' }}</span></td></tr>
@@ -53,8 +81,18 @@
       </table>
     </div>
 
-    <footer class="registry-footer"><span>Total recaudado hoy</span><strong>{{ recaudadoHoy() | currency:'PEN':'S/ ':'1.2-2' }}</strong></footer>
+    <!-- Pie de la tabla: conteo, total de hoy y flechas ‹ › -->
+    <footer class="registry-footer">
+      <span role="status">Mostrando {{ primerResultado() }}{{ ultimoResultado() > primerResultado() ? '–' + ultimoResultado() : '' }} de {{ ventasFiltradas().length }} {{ ventasFiltradas().length === 1 ? 'venta' : 'ventas' }} · Recaudado hoy <strong>{{ recaudadoHoy() | currency:'PEN':'S/ ':'1.2-2' }}</strong></span>
+      <nav class="pagination" aria-label="Paginación de ventas">
+        <button type="button" aria-label="Página anterior" title="Página anterior" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)">‹</button>
+        <span class="current-page" aria-current="page" [attr.aria-label]="'Página ' + paginaActual() + ' de ' + totalPaginas()">{{ paginaActual() }}</span>
+        <button type="button" aria-label="Página siguiente" title="Página siguiente" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)">›</button>
+      </nav>
+    </footer>
   </section>
+
+  <!-- 5. GESTIONAR VENTA (ventana con cliente, servicios, productos y cobro) -->
 
   @if (seleccionadaId()) {
     @if (ventaSeleccionada(); as venta) {

@@ -50,7 +50,7 @@ describe('Órdenes: listado', () => {
     fixture.detectChanges();
   }
 
-  it('conserva la orden y desvanece el aviso después de 2 segundos', fakeAsync(() => {
+  it('conserva la orden y oculta el aviso flotante después de 3 segundos', fakeAsync(() => {
     abrir();
     expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.order-folio').textContent).toBe('OT#1');
@@ -64,17 +64,14 @@ describe('Órdenes: listado', () => {
     flushMicrotasks();
     fixture.detectChanges();
     expect(guardar).toHaveBeenCalledWith(orden, true);
-    expect(fixture.nativeElement.querySelector('.notice').textContent).toContain('Orden OT#1 actualizada correctamente.');
-    tick(1999);
+    // El aviso verde flota sobre la tabla y se va solo a los 3 segundos (igual que Mecánicos).
+    expect(fixture.nativeElement.querySelector('.orders-panel .toast').textContent).toContain('Orden OT#1 actualizada correctamente.');
+    tick(2999);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.notice')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.notice.fading')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.toast')).not.toBeNull();
     tick(1);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.notice.fading')).not.toBeNull();
-    tick(300);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.notice')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.toast')).toBeNull();
   }));
 
   it('combina búsqueda por servicio con filtros y no cambia las órdenes almacenadas', () => {
@@ -101,7 +98,7 @@ describe('Órdenes: listado', () => {
     expect(estado().textContent?.trim()).toBe('En proceso');
     expect(estado().dataset['status']).toBe('proceso');
     expect(actualizar.calls.mostRecent().args[0].estado).toBe('proceso');
-    expect(fixture.nativeElement.querySelector('.notice').textContent).toContain('Estado de OT#1 cambiado a En proceso.');
+    expect(fixture.nativeElement.querySelector('.toast').textContent).toContain('Estado de OT#1 cambiado a En proceso.');
 
     estado().click();
     flushMicrotasks();
@@ -125,11 +122,12 @@ describe('Órdenes: listado', () => {
       fecha: `2026-09-${String(i + 1).padStart(2, '0')}T12:00:00Z`,
     })));
     abrir();
-    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(12);
+    // 5 órdenes por página (igual que Mecánicos): 13 órdenes = páginas de 5, 5 y 3.
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(5);
     expect(fixture.nativeElement.querySelector('tbody tr').textContent).toContain('OT#12');
     fixture.nativeElement.querySelectorAll('.pagination button')[1].click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(5);
     expect(fixture.nativeElement.querySelector('.current-page').textContent).toBe('2');
     buscar('Cliente 12');
     expect(fixture.nativeElement.querySelector('.current-page').textContent).toBe('1');

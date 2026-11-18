@@ -48,13 +48,13 @@ export class Ordenes {
   protected readonly estadoFiltro = signal<EstadoOrden | 'todas'>('todas');
   protected readonly ordenFecha = signal<'recientes' | 'antiguas'>('recientes');
   protected readonly pagina = signal(1);
-  protected readonly porPagina = 12;
+  protected readonly porPagina = 5; // 5 por página, igual que Mecánicos
   protected readonly editando = signal(false);
   protected readonly exportandoExcel = signal(false);
   protected readonly guardando = signal(false);
   protected readonly intentoGuardar = signal(false);
-  protected readonly aviso = signal('');
-  protected readonly avisoDesvaneciendo = signal(false);
+  protected readonly aviso = signal('');        // Mensaje verde flotante sobre la tabla (3 s)
+  protected readonly errorAccion = signal('');  // Error en rojo arriba de la tabla
   protected readonly borrador = signal<OrdenTrabajo>(this.nuevaOrden());
   protected readonly ordenesFiltradas = computed(() => {
     const termino = this.busqueda().trim().toLocaleLowerCase('es');
@@ -191,7 +191,7 @@ export class Ordenes {
       this.mostrarAviso(`Orden ${this.folioVisible(limpia.folio)} ${this.editando() ? 'actualizada' : 'creada'} correctamente.`);
       this.cerrar();
     } catch (error) {
-      this.mostrarAviso(error instanceof Error ? error.message : 'No se pudo guardar la orden.');
+      this.mostrarError(error instanceof Error ? error.message : 'No se pudo guardar la orden.');
     } finally {
       this.guardando.set(false);
     }
@@ -200,7 +200,7 @@ export class Ordenes {
   protected async descargarExcel(): Promise<void> {
     const ordenes = this.ordenesVisibles();
     if (!ordenes.length) {
-      this.mostrarAviso('No hay órdenes para exportar.');
+      this.mostrarError('No hay órdenes para exportar.');
       return;
     }
 
@@ -284,20 +284,10 @@ export class Ordenes {
       URL.revokeObjectURL(enlace.href);
       this.mostrarAviso(`${ordenes.length} ${ordenes.length === 1 ? 'orden exportada' : 'órdenes exportadas'} a Excel.`);
     } catch {
-      this.mostrarAviso('No se pudo generar el archivo de Excel.');
+      this.mostrarError('No se pudo generar el archivo de Excel.');
     } finally {
       this.exportandoExcel.set(false);
     }
-  }
-
-  protected ocultarAviso(): void {
-    if (this.avisoDesvaneciendo()) return;
-    clearTimeout(this.temporizadorAviso);
-    this.avisoDesvaneciendo.set(true);
-    this.temporizadorAviso = setTimeout(() => {
-      this.aviso.set('');
-      this.avisoDesvaneciendo.set(false);
-    }, 300);
   }
 
   protected nombreEstado(estado: EstadoOrden): string {
@@ -312,7 +302,7 @@ export class Ordenes {
       await this.data.actualizarOrden({ ...orden, estado: siguiente });
       this.mostrarAviso(`Estado de ${this.folioVisible(orden.folio)} cambiado a ${NOMBRES_ESTADO[siguiente]}.`);
     } catch (error) {
-      this.mostrarAviso(error instanceof Error ? error.message : 'No se pudo cambiar el estado de la orden.');
+      this.mostrarError(error instanceof Error ? error.message : 'No se pudo cambiar el estado de la orden.');
     }
   }
 
@@ -321,7 +311,7 @@ export class Ordenes {
       const venta = this.data.crearVentaDesdeOrden(orden.id);
       await this.router.navigate(['/panel/ventas'], { queryParams: { venta: venta.id } });
     } catch (error) {
-      this.mostrarAviso(error instanceof Error ? error.message : 'No se pudo enviar la orden a Ventas.');
+      this.mostrarError(error instanceof Error ? error.message : 'No se pudo enviar la orden a Ventas.');
     }
   }
 
@@ -350,11 +340,19 @@ export class Ordenes {
     };
   }
 
+  /** Aviso verde flotante sobre la tabla: se oculta solo a los 3 segundos (igual que Mecánicos). */
   private mostrarAviso(mensaje: string): void {
     clearTimeout(this.temporizadorAviso);
-    this.avisoDesvaneciendo.set(false);
+    this.errorAccion.set('');
     this.aviso.set(mensaje);
-    this.temporizadorAviso = setTimeout(() => this.ocultarAviso(), 2000);
+    this.temporizadorAviso = setTimeout(() => this.aviso.set(''), 3000);
+  }
+
+  /** Error en el recuadro rojo de arriba (se queda hasta que el usuario lo cierre). */
+  private mostrarError(mensaje: string): void {
+    clearTimeout(this.temporizadorAviso);
+    this.aviso.set('');
+    this.errorAccion.set(mensaje);
   }
 
   private numeroPositivo(valor: string | number): number {

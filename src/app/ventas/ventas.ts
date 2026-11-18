@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { TallerDataService } from '../taller/taller-data.service';
@@ -11,7 +11,7 @@ import { MetodoPago, OrdenTrabajo, Venta, totalOrden, totalProductos } from '../
   templateUrl: './ventas.html',
   styleUrl: './ventas.css',
 })
-export class Ventas {
+export class Ventas implements OnDestroy {
   private readonly data = inject(TallerDataService);
   private readonly route = inject(ActivatedRoute);
 
@@ -35,7 +35,55 @@ export class Ventas {
   protected readonly clienteNuevo = signal('');
   protected readonly mostrarServicios = signal(false);
   protected readonly metodoPago = signal<MetodoPago>('efectivo');
-  protected readonly aviso = signal('');
+  protected readonly aviso = signal('');        // Mensaje verde flotante sobre la tabla (3 s)
+  protected readonly errorAccion = signal('');  // Error en rojo arriba de la tabla
+  private temporizadorAviso?: ReturnType<typeof setTimeout>;
+
+  // ---------------------------------------------------------------------------------
+  // Paginación (igual que en Mecánicos): 5 ventas por página con flechas ‹ ›
+  // ---------------------------------------------------------------------------------
+  protected readonly porPagina = 5;
+  protected readonly pagina = signal(1);
+  protected readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.ventasFiltradas().length / this.porPagina)));
+  /** Evita quedar en una página que ya no existe (por ejemplo, después de buscar). */
+  protected readonly paginaActual = computed(() => Math.min(this.pagina(), this.totalPaginas()));
+  /** Las ventas de la página actual. */
+  protected readonly ventasPagina = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.porPagina;
+    return this.ventasFiltradas().slice(inicio, inicio + this.porPagina);
+  });
+  /** Números para el texto "Mostrando 1–5 de 12 ventas". */
+  protected readonly primerResultado = computed(() =>
+    this.ventasFiltradas().length ? (this.paginaActual() - 1) * this.porPagina + 1 : 0);
+  protected readonly ultimoResultado = computed(() =>
+    Math.min(this.paginaActual() * this.porPagina, this.ventasFiltradas().length));
+  /** Ventas que todavía no se cobran (para la etiqueta del título). */
+  protected readonly pendientes = computed(() => this.data.ventas().filter(venta => venta.estado === 'pendiente').length);
+
+  ngOnDestroy(): void {
+    clearTimeout(this.temporizadorAviso);
+  }
+
+  /** Cambia la búsqueda y vuelve a la página 1. */
+  protected buscar(texto: string): void {
+    this.busqueda.set(texto);
+    this.pagina.set(1);
+  }
+
+  /** Aviso verde flotante sobre la tabla: se oculta solo a los 3 segundos (igual que Mecánicos). */
+  private mostrarAviso(mensaje: string): void {
+    clearTimeout(this.temporizadorAviso);
+    this.errorAccion.set('');
+    this.aviso.set(mensaje);
+    this.temporizadorAviso = setTimeout(() => this.aviso.set(''), 3000);
+  }
+
+  /** Error en el recuadro rojo de arriba (se queda hasta que el usuario lo cierre). */
+  private mostrarError(mensaje: string): void {
+    clearTimeout(this.temporizadorAviso);
+    this.aviso.set('');
+    this.errorAccion.set(mensaje);
+  }
   protected readonly fechaActual = new Intl.DateTimeFormat('es-PE', {
     weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
   }).format(new Date());
@@ -55,20 +103,20 @@ export class Ventas {
     this.seleccionadaId.set(venta.id);
     this.mostrarServicios.set(false);
     this.metodoPago.set(venta.metodoPago ?? 'efectivo');
-    this.aviso.set('');
+    this.errorAccion.set('');
   }
 
   protected crearVentaDirecta(): void {
     const cliente = this.clienteNuevo().trim();
     if (!cliente) {
-      this.aviso.set('Ingresa el nombre del cliente para crear la venta.');
+      this.mostrarError('Ingresa el nombre del cliente para crear la venta.');
       return;
     }
     const venta = this.data.crearVentaDirecta(cliente);
     this.seleccionadaId.set(venta.id);
     this.clienteNuevo.set('');
     this.creandoVenta.set(false);
-    this.aviso.set('Venta directa creada. Agrega los productos que comprará el cliente.');
+    this.mostrarAviso('Venta directa creada. Agrega los productos que comprará el cliente.');
   }
 
   protected agregarProducto(): void {
@@ -97,7 +145,7 @@ export class Ventas {
     const venta = this.ventaSeleccionada();
     if (!venta) return;
     if (venta.estado === 'pendiente') this.data.actualizarMetodoPago(venta.id, this.metodoPago());
-    this.aviso.set('Cambios de la venta guardados correctamente.');
+    this.mostrarAviso('Cambios de la venta guardados correctamente.');
     this.seleccionadaId.set('');
   }
 
@@ -108,12 +156,12 @@ export class Ventas {
     if (!metodo) return;
     try {
       await this.data.registrarPago(venta.id, metodo);
-      this.aviso.set(venta.ordenId
+      this.mostrarAviso(venta.ordenId
         ? 'Venta marcada como pagada. La orden asociada cambió automáticamente a Pagado.'
         : 'Venta marcada como pagada correctamente.');
       this.seleccionadaId.set('');
     } catch (error) {
-      this.aviso.set(error instanceof Error ? error.message : 'No se pudo registrar el pago.');
+      this.mostrarError(error instanceof Error ? error.message : 'No se pudo registrar el pago.');
     }
   }
 
@@ -123,9 +171,9 @@ export class Ventas {
     try {
       await this.data.reabrirVenta(venta.id);
       this.metodoPago.set('efectivo');
-      this.aviso.set('La venta está habilitada nuevamente para modificarla.');
+      this.mostrarAviso('La venta está habilitada nuevamente para modificarla.');
     } catch (error) {
-      this.aviso.set(error instanceof Error ? error.message : 'No se pudo modificar la venta.');
+      this.mostrarError(error instanceof Error ? error.message : 'No se pudo modificar la venta.');
     }
   }
 
