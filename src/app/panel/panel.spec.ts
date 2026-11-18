@@ -44,7 +44,7 @@ describe('Panel navigation', () => {
       ['ordenes', 'Órdenes', 'Órdenes de trabajo'],
       ['ventas', 'Ventas', 'Registro de Ventas'],
       ['caja', 'Caja', 'El módulo de Caja está funcionando.'],
-      ['mecanicos', 'Mecánicos', 'El módulo de Mecánicos está funcionando.'],
+      ['mecanicos', 'Mecánicos', 'EQUIPO DEL TALLER'],
       ['reportes', 'Reportes', 'El módulo de Reportes está funcionando.'],
     ]) {
       await harness.navigateByUrl(`/panel/${path}`);
