@@ -117,6 +117,10 @@
           @if (intentoGuardar() && !borrador().cliente.trim()) { <small>Ingresa el nombre del cliente.</small> }
         </label>
         <label class="field">
+          <span>Teléfono <em>(opcional)</em></span>
+          <span class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h4l2 5-3 2a15 15 0 0 0 5 5l2-3 5 2v4a3 3 0 0 1-3 3C9.7 20.4 3.6 14.3 3 6a3 3 0 0 1 3-3Z" /></svg><input name="telefono" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="Ej. 987 654 321" [ngModel]="borrador().telefono" (ngModelChange)="actualizar('telefono', $event)" /></span>
+        </label>
+        <label class="field">
           <span>Moto <b>*</b></span>
           <span class="input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="17" r="3" /><circle cx="19" cy="17" r="3" /><path d="M8 17h5l-3-7h4l3 7M7 8h4m3 2 2-2h3" /></svg><input name="moto" type="text" placeholder="Marca, modelo o placa" [ngModel]="borrador().moto" (ngModelChange)="actualizar('moto', $event)" [class.invalid]="intentoGuardar() && !borrador().moto.trim()" /></span>
           @if (intentoGuardar() && !borrador().moto.trim()) { <small>Ingresa los datos de la moto.</small> }

@@ -1,1 +1,55 @@
-<p>El módulo de Clientes está funcionando.</p>
+<section class="customers" aria-labelledby="customers-title">
+  <header class="page-header">
+    <div class="page-heading">
+      <span class="eyebrow">REGISTRO AUTOMÁTICO</span>
+      <h1 id="customers-title">Clientes</h1>
+      <p>Los clientes se registran automáticamente al crear una orden de trabajo.</p>
+    </div>
+    <div class="summary" aria-label="Resumen de clientes">
+      <strong>{{ clientes().length }}</strong>
+      <span>{{ clientes().length === 1 ? 'cliente registrado' : 'clientes registrados' }}</span>
+    </div>
+  </header>
+
+  <div class="customers-card">
+    <div class="card-toolbar">
+      <div><h2>Directorio de clientes</h2><p>Información consolidada desde el módulo de Órdenes.</p></div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 5 5" /></svg>
+        <span class="sr-only">Buscar cliente, teléfono o moto</span>
+        <input #buscar type="search" placeholder="Buscar cliente, teléfono o moto…" [value]="busqueda()" (input)="busqueda.set(buscar.value)" />
+        @if (busqueda()) { <button type="button" aria-label="Limpiar búsqueda" (click)="busqueda.set(''); buscar.focus()">×</button> }
+      </label>
+    </div>
+
+    @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+
+    @if (cargando()) {
+      <div class="empty-state" role="status"><span class="spinner"></span><strong>Cargando clientes…</strong></div>
+    } @else if (!clientesVisibles().length) {
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" /><path d="M5 20a7 7 0 0 1 14 0" /></svg></span>
+        <strong>{{ busqueda() ? 'No se encontraron clientes' : 'Aún no hay clientes registrados' }}</strong>
+        <p>{{ busqueda() ? 'Prueba con otro nombre o motocicleta.' : 'Al guardar una orden, su cliente aparecerá aquí automáticamente.' }}</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Cliente</th><th scope="col">Motocicletas</th><th scope="col">Teléfono</th><th scope="col">Última visita</th><th scope="col">Total en órdenes</th></tr></thead>
+          <tbody>
+            @for (cliente of clientesVisibles(); track cliente.id) {
+              <tr>
+                <td data-label="Cliente"><span class="avatar" aria-hidden="true">{{ cliente.nombre.charAt(0).toLocaleUpperCase('es') }}</span><strong>{{ cliente.nombre }}</strong></td>
+                <td data-label="Motocicletas"><div class="motorcycles">@for (moto of cliente.motos; track moto) { <span>{{ moto }}</span> }</div></td>
+                <td data-label="Teléfono">@if (cliente.telefono) { <a class="phone" [href]="'tel:' + cliente.telefono">{{ cliente.telefono }}</a> } @else { <span class="not-registered">No registrado</span> }</td>
+                <td data-label="Última visita"><time [attr.datetime]="cliente.ultimaVisita">{{ cliente.ultimaVisita | date:'dd/MM/yyyy HH:mm' }}</time></td>
+                <td data-label="Total en órdenes"><strong class="money">{{ cliente.totalFacturado | currency:'PEN':'S/ ':'1.2-2' }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer>Mostrando {{ clientesVisibles().length }} de {{ clientes().length }} {{ clientes().length === 1 ? 'cliente' : 'clientes' }}</footer>
+    }
+  </div>
+</section>

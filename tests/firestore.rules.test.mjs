@@ -12,7 +12,7 @@ const producto = () => ({
 });
 const referencia = () => doc(db, 'productos', 'codigo_REP%2F001');
 const orden = () => ({
-  folio: 'OT-2026-001', cliente: 'Ana', moto: 'Honda CB190', estado: 'pendiente',
+  folio: 'OT-2026-001', cliente: 'Ana', telefono: '987654321', moto: 'Honda CB190', estado: 'pendiente',
   observaciones: '', servicios: [{ id: 'servicio-1', nombre: 'Afinamiento', precio: 80 }],
   manoObra: 25, fecha: Timestamp.fromDate(new Date('2026-10-03T12:00:00Z')),
   creado: serverTimestamp(), creadoPor: 'operador',
@@ -110,6 +110,7 @@ test('deniega órdenes sin sesión y rechaza datos inválidos', async () => {
   await assertFails(setDoc(doc(anon, 'ordenes', 'anonima'), orden()));
   await assertFails(setDoc(referenciaOrden(), { ...orden(), estado: 'desconocido' }));
   await assertFails(setDoc(referenciaOrden(), { ...orden(), cliente: '' }));
+  await assertFails(setDoc(referenciaOrden(), { ...orden(), telefono: '1'.repeat(21) }));
   await assertFails(setDoc(referenciaOrden(), { ...orden(), creadoPor: 'otro' }));
 });
 

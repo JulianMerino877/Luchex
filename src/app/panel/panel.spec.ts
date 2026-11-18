@@ -39,7 +39,7 @@ describe('Panel navigation', () => {
     const harness = await RouterTestingHarness.create('/panel');
     expect(TestBed.inject(Router).url).toBe('/panel/clientes');
     for (const [path, label, contenido] of [
-      ['clientes', 'Clientes', 'El módulo de Clientes está funcionando.'],
+      ['clientes', 'Clientes', 'Directorio de clientes'],
       ['inventario', 'Inventario', 'CONTROL DE PRODUCTOS'],
       ['ordenes', 'Órdenes', 'Órdenes de trabajo'],
       ['ventas', 'Ventas', 'Registro de Ventas'],

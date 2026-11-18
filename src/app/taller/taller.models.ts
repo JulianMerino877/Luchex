@@ -12,6 +12,7 @@ export interface OrdenTrabajo {
   id: string;
   folio: string;
   cliente: string;
+  telefono?: string;
   moto: string;
   estado: EstadoOrden;
   observaciones: string;

@@ -11,7 +11,7 @@ describe('Órdenes: listado', () => {
   let guardar: jasmine.Spy;
   let actualizar: jasmine.Spy;
   const orden: OrdenTrabajo = {
-    id: 'existente', folio: 'OT-2026-001', cliente: 'rojas', moto: 'rojo',
+    id: 'existente', folio: 'OT-2026-001', cliente: 'rojas', telefono: '', moto: 'rojo',
     estado: 'pendiente', observaciones: 'Conservar observaciones',
     servicios: [{ id: 'servicio', nombre: 'Cambio de aceite', precio: 35 }],
     manoObra: 20, fecha: '2026-09-20T12:00:00Z',
