@@ -3,8 +3,10 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
   Auth,
   User,
+  browserSessionPersistence,
   getAuth,
   onAuthStateChanged,
+  setPersistence,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
@@ -19,6 +21,7 @@ export class AuthService {
   readonly loading = this.initializing.asReadonly();
   readonly configurationError = this.initializationError.asReadonly();
   private auth?: Auth;
+  private persistenceReady: Promise<void> = Promise.resolve();
 
   constructor() {
     const config = environment.firebase;
@@ -30,6 +33,8 @@ export class AuthService {
 
     try {
       this.auth = getAuth(getApps().length ? getApp() : initializeApp(config));
+      // La sesión solo dura mientras la pestaña esté abierta; al cerrarla se vuelve a pedir login.
+      this.persistenceReady = setPersistence(this.auth, browserSessionPersistence).catch(() => undefined);
       onAuthStateChanged(this.auth, (user) => {
         this.currentUser.set(user);
         this.initializing.set(false);
@@ -45,12 +50,14 @@ export class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     if (!this.auth) return false;
+    await this.persistenceReady;
     await this.auth.authStateReady();
     return this.auth.currentUser !== null;
   }
 
   async login(email: string, password: string): Promise<void> {
     if (!this.auth) throw new Error(this.configurationError());
+    await this.persistenceReady;
     await signInWithEmailAndPassword(this.auth, email.trim(), password);
   }
 
