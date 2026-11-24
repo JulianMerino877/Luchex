@@ -54,20 +54,24 @@ export class OrdenesService implements OnDestroy {
     const referencia = doc(this.firestore, 'ordenes', orden.id);
     const datos = this.paraFirestore(orden);
 
-    if (editando) {
-      await updateDoc(referencia, {
-        ...datos,
-        actualizado: serverTimestamp(),
-        actualizadoPor: usuario.uid,
-      });
-      return;
-    }
+    try {
+      if (editando) {
+        await updateDoc(referencia, {
+          ...datos,
+          actualizado: serverTimestamp(),
+          actualizadoPor: usuario.uid,
+        });
+        return;
+      }
 
-    await setDoc(referencia, {
-      ...datos,
-      creado: serverTimestamp(),
-      creadoPor: usuario.uid,
-    });
+      await setDoc(referencia, {
+        ...datos,
+        creado: serverTimestamp(),
+        creadoPor: usuario.uid,
+      });
+    } catch (error) {
+      throw new Error(this.mensajeError(error));
+    }
   }
 
   async actualizar(orden: OrdenTrabajo): Promise<void> {
